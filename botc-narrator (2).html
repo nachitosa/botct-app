@@ -1,0 +1,1857 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>BotC — Asistente del Narrador</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700&family=Cinzel:wght@400;600&family=Lato:wght@300;400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0608;
+    --surface: #140d10;
+    --surface2: #1e1318;
+    --border: #3a1f28;
+    --gold: #c9a84c;
+    --gold-dim: #7a5e28;
+    --red: #8b1a1a;
+    --red-bright: #c0392b;
+    --blue: #1a3a5c;
+    --blue-bright: #2980b9;
+    --green: #1a4a2a;
+    --green-bright: #27ae60;
+    --purple: #3a1a5c;
+    --purple-bright: #8e44ad;
+    --text: #e8d5b0;
+    --text-dim: #8a7560;
+    --outsider: #1a3a5c;
+    --minion: #4a1a1a;
+    --demon: #1a0a0a;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Lato', sans-serif;
+    font-weight: 300;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Atmospheric background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(ellipse at 20% 20%, rgba(139,26,26,0.08) 0%, transparent 60%),
+                radial-gradient(ellipse at 80% 80%, rgba(26,58,92,0.08) 0%, transparent 60%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .app { position: relative; z-index: 1; max-width: 900px; margin: 0 auto; padding: 0 12px 80px; }
+
+  /* Header */
+  header {
+    text-align: center;
+    padding: 24px 0 16px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 20px;
+  }
+  header h1 {
+    font-family: 'Cinzel Decorative', serif;
+    font-size: clamp(14px, 4vw, 22px);
+    color: var(--gold);
+    letter-spacing: 0.08em;
+    text-shadow: 0 0 30px rgba(201,168,76,0.4);
+  }
+  header p {
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-top: 4px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+  }
+
+  /* Tabs */
+  .tabs {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 20px;
+    background: var(--surface);
+    border-radius: 8px;
+    padding: 4px;
+    border: 1px solid var(--border);
+  }
+  .tab {
+    flex: 1;
+    padding: 8px 4px;
+    background: none;
+    border: none;
+    color: var(--text-dim);
+    font-family: 'Cinzel', serif;
+    font-size: clamp(9px, 2.5vw, 12px);
+    cursor: pointer;
+    border-radius: 5px;
+    transition: all 0.2s;
+    letter-spacing: 0.05em;
+  }
+  .tab.active {
+    background: var(--surface2);
+    color: var(--gold);
+    border: 1px solid var(--border);
+  }
+  .tab:hover:not(.active) { color: var(--text); }
+
+  /* Panels */
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  /* === SETUP PANEL === */
+  .setup-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  @media (max-width: 500px) { .setup-grid { grid-template-columns: 1fr; } }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px;
+  }
+  .card h3 {
+    font-family: 'Cinzel', serif;
+    font-size: 11px;
+    color: var(--gold);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+
+  .player-input {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+  .player-input input {
+    flex: 1;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    color: var(--text);
+    padding: 7px 10px;
+    font-family: 'Lato', sans-serif;
+    font-size: 13px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .player-input input:focus { border-color: var(--gold-dim); }
+  .player-input input::placeholder { color: var(--text-dim); }
+
+  .btn {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 7px 14px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-family: 'Cinzel', serif;
+    font-size: 11px;
+    letter-spacing: 0.05em;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+  .btn:hover { border-color: var(--gold-dim); color: var(--gold); }
+  .btn.primary { background: var(--red); border-color: var(--red-bright); color: var(--text); }
+  .btn.primary:hover { background: var(--red-bright); }
+  .btn.gold { background: rgba(201,168,76,0.1); border-color: var(--gold-dim); color: var(--gold); }
+  .btn.gold:hover { background: rgba(201,168,76,0.2); }
+  .btn.danger { border-color: var(--red); color: var(--red-bright); }
+  .btn.danger:hover { background: var(--red); color: var(--text); }
+
+  .player-list { display: flex; flex-direction: column; gap: 5px; }
+  .player-chip {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 6px 10px;
+    font-size: 13px;
+  }
+  .player-chip button {
+    background: none;
+    border: none;
+    color: var(--text-dim);
+    cursor: pointer;
+    font-size: 15px;
+    line-height: 1;
+    padding: 0 2px;
+  }
+  .player-chip button:hover { color: var(--red-bright); }
+
+  .drag-handle {
+    color: var(--text-dim);
+    cursor: grab;
+    font-size: 14px;
+    padding: 0 4px 0 0;
+    user-select: none;
+    touch-action: none;
+    flex-shrink: 0;
+  }
+  .drag-handle:active { cursor: grabbing; }
+  .player-chip.dragging {
+    opacity: 0.4;
+    border-style: dashed;
+    border-color: var(--gold-dim);
+  }
+  .player-chip.drag-over {
+    border-color: var(--gold);
+    background: rgba(201,168,76,0.08);
+  }
+
+  .status-toggle {
+    background: none;
+    border: 1px solid transparent;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 15px;
+    padding: 2px 4px;
+    line-height: 1;
+    opacity: 0.25;
+    transition: opacity 0.15s, border-color 0.15s, background 0.15s;
+  }
+  .status-toggle:hover { opacity: 0.6; }
+  .status-toggle.active-smoke {
+    opacity: 1;
+    background: rgba(127,140,141,0.2);
+    border-color: rgba(127,140,141,0.5);
+  }
+  .status-toggle.active-poison {
+    opacity: 1;
+    background: rgba(142,68,173,0.15);
+    border-color: rgba(142,68,173,0.5);
+  }
+
+  .count-display {
+    font-size: 12px;
+    color: var(--text-dim);
+    margin-bottom: 8px;
+  }
+  .count-display span { color: var(--gold); font-weight: 700; }
+
+  .role-dist {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    font-size: 12px;
+  }
+  .role-dist-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 4px 8px;
+    border-radius: 4px;
+  }
+  .role-dist-row.townsfolk { background: rgba(39,174,96,0.1); color: #27ae60; }
+  .role-dist-row.outsider { background: rgba(41,128,185,0.1); color: #2980b9; }
+  .role-dist-row.minion { background: rgba(192,57,43,0.1); color: #e74c3c; }
+  .role-dist-row.demon { background: rgba(100,0,0,0.2); color: #ff6b6b; }
+
+  /* === GAME PANEL === */
+  .phase-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    margin-bottom: 14px;
+  }
+  .phase-info { font-family: 'Cinzel', serif; font-size: 13px; }
+  .phase-info .day { font-size: 10px; color: var(--text-dim); letter-spacing: 0.1em; }
+  .phase-info .phase { color: var(--gold); }
+
+  .players-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+
+  .player-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+  .player-card:hover { border-color: var(--gold-dim); }
+  .player-card.dead {
+    opacity: 0.45;
+    border-style: dashed;
+  }
+  .player-card.dead .player-name { text-decoration: line-through; }
+  .player-card .player-name {
+    font-family: 'Cinzel', serif;
+    font-size: 12px;
+    margin-bottom: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .player-card .role-badge {
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 3px;
+    display: inline-block;
+    margin-bottom: 6px;
+    letter-spacing: 0.05em;
+  }
+  .player-card.townsfolk .role-badge { background: rgba(39,174,96,0.15); color: #27ae60; border: 1px solid rgba(39,174,96,0.3); }
+  .player-card.outsider .role-badge { background: rgba(41,128,185,0.15); color: #2980b9; border: 1px solid rgba(41,128,185,0.3); }
+  .player-card.minion .role-badge { background: rgba(192,57,43,0.15); color: #e74c3c; border: 1px solid rgba(192,57,43,0.3); }
+  .player-card.demon .role-badge { background: rgba(100,0,0,0.25); color: #ff6b6b; border: 1px solid rgba(192,57,43,0.5); }
+  .player-card.unassigned .role-badge { background: rgba(138,117,96,0.15); color: var(--text-dim); border: 1px solid var(--border); }
+
+  .player-card .status-icons { font-size: 14px; display: flex; gap: 3px; flex-wrap: wrap; }
+  .player-card .dead-ghost {
+    position: absolute;
+    top: 6px; right: 8px;
+    font-size: 18px;
+    opacity: 0.5;
+  }
+
+  .btn-row { display: flex; gap: 6px; flex-wrap: wrap; }
+
+  /* Nomination tracker */
+  .nom-tracker {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 14px;
+    margin-bottom: 14px;
+  }
+  .nom-tracker h3 { font-family: 'Cinzel', serif; font-size: 11px; color: var(--gold); letter-spacing: 0.1em; margin-bottom: 8px; }
+  .nom-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .nom-select {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 6px 10px;
+    border-radius: 5px;
+    font-family: 'Lato', sans-serif;
+    font-size: 12px;
+    outline: none;
+    flex: 1;
+    min-width: 100px;
+  }
+  .vote-count {
+    font-family: 'Cinzel', serif;
+    font-size: 20px;
+    color: var(--gold);
+    text-align: center;
+    padding: 4px 12px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    min-width: 50px;
+  }
+  .majority-info { font-size: 11px; color: var(--text-dim); }
+  .majority-info span { color: var(--gold); }
+
+  .nom-history { margin-top: 10px; display: flex; flex-direction: column; gap: 4px; }
+  .nom-entry {
+    font-size: 11px;
+    color: var(--text-dim);
+    display: flex;
+    justify-content: space-between;
+    padding: 3px 0;
+    border-bottom: 1px solid rgba(58,31,40,0.3);
+  }
+  .nom-entry .executed { color: var(--red-bright); font-weight: 700; }
+
+  /* === ROLES PANEL === */
+  .roles-filter {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+  }
+  .filter-btn {
+    padding: 5px 12px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    background: none;
+    color: var(--text-dim);
+    font-size: 11px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: 'Cinzel', serif;
+    letter-spacing: 0.05em;
+  }
+  .filter-btn.active.townsfolk { background: rgba(39,174,96,0.15); border-color: #27ae60; color: #27ae60; }
+  .filter-btn.active.outsider { background: rgba(41,128,185,0.15); border-color: #2980b9; color: #2980b9; }
+  .filter-btn.active.minion { background: rgba(192,57,43,0.15); border-color: #e74c3c; color: #e74c3c; }
+  .filter-btn.active.demon { background: rgba(100,0,0,0.2); border-color: #ff6b6b; color: #ff6b6b; }
+  .filter-btn.active.all { background: rgba(201,168,76,0.15); border-color: var(--gold); color: var(--gold); }
+
+  .roles-list { display: flex; flex-direction: column; gap: 6px; }
+  .role-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .role-card:hover { border-color: var(--gold-dim); }
+  .role-card .role-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 0;
+  }
+  .role-card.expanded .role-header { margin-bottom: 8px; }
+  .role-card .role-name {
+    font-family: 'Cinzel', serif;
+    font-size: 13px;
+    color: var(--text);
+    flex: 1;
+  }
+  .role-card .role-type-tag {
+    font-size: 9px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 2px 7px;
+    border-radius: 10px;
+  }
+  .townsfolk .role-type-tag { background: rgba(39,174,96,0.15); color: #27ae60; border: 1px solid rgba(39,174,96,0.3); }
+  .outsider .role-type-tag { background: rgba(41,128,185,0.15); color: #2980b9; border: 1px solid rgba(41,128,185,0.3); }
+  .minion .role-type-tag { background: rgba(192,57,43,0.15); color: #e74c3c; border: 1px solid rgba(192,57,43,0.3); }
+  .demon .role-type-tag { background: rgba(100,0,0,0.2); color: #ff6b6b; border: 1px solid rgba(192,57,43,0.5); }
+
+  .role-card .role-ability {
+    font-size: 12px;
+    color: var(--text-dim);
+    line-height: 1.5;
+    display: none;
+  }
+  .role-card.expanded .role-ability { display: block; }
+  .role-card .role-notes {
+    font-size: 11px;
+    color: var(--gold-dim);
+    margin-top: 6px;
+    font-style: italic;
+    display: none;
+  }
+  .role-card.expanded .role-notes { display: block; }
+  .role-card .expand-icon { color: var(--text-dim); font-size: 10px; transition: transform 0.2s; }
+  .role-card.expanded .expand-icon { transform: rotate(180deg); }
+
+  /* === DECISIONS PANEL === */
+  .decision-section { margin-bottom: 16px; }
+  .decision-section h3 {
+    font-family: 'Cinzel', serif;
+    font-size: 11px;
+    color: var(--gold);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .decision-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  @media (max-width: 500px) { .decision-grid { grid-template-columns: 1fr; } }
+
+  .decision-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .decision-card:hover { border-color: var(--gold-dim); background: var(--surface2); }
+  .decision-card h4 {
+    font-family: 'Cinzel', serif;
+    font-size: 12px;
+    color: var(--text);
+    margin-bottom: 4px;
+  }
+  .decision-card p { font-size: 11px; color: var(--text-dim); line-height: 1.4; }
+
+  .decision-modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.85);
+    z-index: 100;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  .decision-modal.open { display: flex; }
+  .decision-modal-content {
+    background: var(--surface);
+    border: 1px solid var(--gold-dim);
+    border-radius: 10px;
+    padding: 20px;
+    max-width: 480px;
+    width: 100%;
+    max-height: 80vh;
+    overflow-y: auto;
+  }
+  .decision-modal-content h3 {
+    font-family: 'Cinzel', serif;
+    color: var(--gold);
+    font-size: 14px;
+    margin-bottom: 12px;
+  }
+  .decision-step {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 10px;
+    align-items: flex-start;
+  }
+  .step-num {
+    background: var(--gold);
+    color: var(--bg);
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-weight: 700;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+  .step-text { font-size: 12px; line-height: 1.5; color: var(--text); }
+  .step-text strong { color: var(--gold); }
+  .decision-note {
+    background: rgba(201,168,76,0.08);
+    border: 1px solid var(--gold-dim);
+    border-radius: 5px;
+    padding: 8px 10px;
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-top: 10px;
+    font-style: italic;
+  }
+
+  /* Modal for player */
+  .player-modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.85);
+    z-index: 100;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  .player-modal.open { display: flex; }
+  .player-modal-content {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px;
+    max-width: 380px;
+    width: 100%;
+  }
+  .player-modal-content h3 {
+    font-family: 'Cinzel', serif;
+    color: var(--gold);
+    font-size: 16px;
+    margin-bottom: 14px;
+    text-align: center;
+  }
+  .modal-section { margin-bottom: 12px; }
+  .modal-section label {
+    display: block;
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 5px;
+  }
+  .modal-select {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 8px 10px;
+    border-radius: 5px;
+    font-family: 'Lato', sans-serif;
+    font-size: 13px;
+    outline: none;
+  }
+  .token-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+  }
+  .token {
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    color: var(--text-dim);
+    transition: all 0.2s;
+  }
+  .token.active { background: rgba(201,168,76,0.15); border-color: var(--gold); color: var(--gold); }
+
+  .log-container {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px;
+    max-height: 200px;
+    overflow-y: auto;
+  }
+  .log-entry {
+    font-size: 11px;
+    color: var(--text-dim);
+    padding: 3px 0;
+    border-bottom: 1px solid rgba(58,31,40,0.3);
+    display: flex;
+    gap: 8px;
+  }
+  .log-entry .log-time { color: var(--gold-dim); flex-shrink: 0; }
+  .log-entry.important { color: var(--text); }
+  .log-entry.death { color: #e74c3c; }
+  .log-entry.execution { color: #ff6b6b; font-weight: 700; }
+
+  /* Night order */
+  .night-order {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+  .night-step {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    transition: all 0.2s;
+    cursor: pointer;
+  }
+  .night-step.done {
+    opacity: 0.4;
+    text-decoration: line-through;
+  }
+  .night-step .n-order {
+    color: var(--gold-dim);
+    font-family: 'Cinzel', serif;
+    font-size: 11px;
+    width: 20px;
+    text-align: center;
+  }
+  .night-step .n-role {
+    font-family: 'Cinzel', serif;
+    font-size: 12px;
+    flex: 1;
+  }
+  .night-step .n-action {
+    font-size: 11px;
+    color: var(--text-dim);
+    text-align: right;
+  }
+
+  .empty-state {
+    text-align: center;
+    color: var(--text-dim);
+    font-size: 13px;
+    padding: 30px 20px;
+    font-style: italic;
+  }
+
+  .win-banner {
+    display: none;
+    text-align: center;
+    padding: 16px;
+    border-radius: 8px;
+    margin-bottom: 14px;
+    font-family: 'Cinzel', serif;
+  }
+  .win-banner.good { background: rgba(39,174,96,0.15); border: 1px solid #27ae60; color: #27ae60; }
+  .win-banner.evil { background: rgba(192,57,43,0.15); border: 1px solid #e74c3c; color: #e74c3c; }
+  .win-banner h2 { font-size: 18px; margin-bottom: 4px; }
+  .win-banner p { font-size: 12px; opacity: 0.8; }
+
+  /* Collapsible checklist sections */
+  .checklist-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+    user-select: none;
+    padding: 2px 0;
+  }
+  .checklist-header:hover h3 { color: var(--gold); }
+  .section-arrow {
+    font-size: 9px;
+    color: var(--text-dim);
+    transition: transform 0.2s;
+    display: inline-block;
+  }
+  .section-arrow.open { transform: rotate(90deg); color: var(--gold); }
+  .checklist-body { overflow: hidden; }
+
+  /* Scroll */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: var(--surface); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>🕰️ Blood on the Clocktower</h1>
+    <p>Asistente del Narrador · Trouble Brewing</p>
+  </header>
+
+  <div class="tabs">
+    <button class="tab active" onclick="showTab('setup')">Jugadores</button>
+    <button class="tab" onclick="showTab('game')">Partida</button>
+    <button class="tab" onclick="showTab('roles')">Roles</button>
+    <button class="tab" onclick="showTab('decisions')">Guías</button>
+  </div>
+
+  <!-- SETUP PANEL -->
+  <div id="tab-setup" class="panel active">
+    <div class="setup-grid">
+      <div class="card">
+        <h3>Jugadores</h3>
+        <div class="player-input">
+          <input type="text" id="playerNameInput" placeholder="Nombre del jugador..." maxlength="20" onkeydown="if(event.key==='Enter') addPlayer()">
+          <button class="btn" onclick="addPlayer()">+</button>
+        </div>
+        <div id="playerListSetup" class="player-list">
+          <div class="empty-state" style="padding:10px;font-size:11px;">Añadí jugadores →</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Distribución de Roles</h3>
+        <div class="count-display">Jugadores: <span id="playerCount">0</span></div>
+        <div class="role-dist" id="roleDist">
+          <div class="role-dist-row townsfolk"><span>Aldeanos</span><span>—</span></div>
+          <div class="role-dist-row outsider"><span>Forasteros</span><span>—</span></div>
+          <div class="role-dist-row minion"><span>Esbirros</span><span>—</span></div>
+          <div class="role-dist-row demon"><span>Demonio</span><span>—</span></div>
+        </div>
+        <br>
+        <button class="btn gold" onclick="randomizeRoles()" style="width:100%;margin-bottom:6px">🎲 Asignar roles al azar</button>
+        <button class="btn primary" onclick="startGame()" style="width:100%">▶ Iniciar Partida</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- GAME PANEL -->
+  <div id="tab-game" class="panel">
+
+    <!-- Checklist: Preparación -->
+    <div class="card checklist-section" style="margin-bottom:8px">
+      <div class="checklist-header" onclick="toggleSection('prep')">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="section-arrow" id="arrow-prep">▶</span>
+          <h3 style="margin:0">📋 Preparación Previa</h3>
+        </div>
+        <button class="btn" style="padding:4px 10px;font-size:10px" onclick="event.stopPropagation();resetChecklist('prep')">↺</button>
+      </div>
+      <div class="checklist-body" id="body-prep" style="display:none">
+        <p style="font-size:11px;color:var(--text-dim);margin-bottom:10px;margin-top:10px;">Hacé esto en silencio antes de sentar a los jugadores. Una vez que empieza la noche, no podés cambiar estas decisiones.</p>
+        <div class="night-order" id="checklist-prep"></div>
+      </div>
+    </div>
+
+    <!-- Checklist: Primera Noche -->
+    <div class="card checklist-section" style="margin-bottom:8px">
+      <div class="checklist-header" onclick="toggleSection('first-night')">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="section-arrow" id="arrow-first-night">▶</span>
+          <h3 style="margin:0">🌙 Primera Noche</h3>
+        </div>
+        <button class="btn" style="padding:4px 10px;font-size:10px" onclick="event.stopPropagation();resetChecklist('first-night')">↺</button>
+      </div>
+      <div class="checklist-body" id="body-first-night" style="display:none">
+        <p style="font-size:11px;color:var(--text-dim);margin-bottom:10px;margin-top:10px;">El Diablillo NO elige víctima esta noche.</p>
+        <div class="night-order" id="checklist-first-night"></div>
+      </div>
+    </div>
+
+    <!-- Checklist: Noche Normal -->
+    <div class="card checklist-section" style="margin-bottom:8px">
+      <div class="checklist-header" onclick="toggleSection('night')">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="section-arrow" id="arrow-night">▶</span>
+          <h3 style="margin:0">🌑 Noche Normal</h3>
+        </div>
+        <button class="btn" style="padding:4px 10px;font-size:10px" onclick="event.stopPropagation();resetChecklist('night')">↺</button>
+      </div>
+      <div class="checklist-body" id="body-night" style="display:none">
+        <p style="font-size:11px;color:var(--text-dim);margin-bottom:10px;margin-top:10px;">Usá esto a partir de la noche 2 en adelante.</p>
+        <div class="night-order" id="checklist-night"></div>
+      </div>
+    </div>
+
+    <!-- Checklist: Día -->
+    <div class="card checklist-section" style="margin-bottom:8px">
+      <div class="checklist-header" onclick="toggleSection('day')">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="section-arrow" id="arrow-day">▶</span>
+          <h3 style="margin:0">☀️ Día</h3>
+        </div>
+        <button class="btn" style="padding:4px 10px;font-size:10px" onclick="event.stopPropagation();resetChecklist('day')">↺</button>
+      </div>
+      <div class="checklist-body" id="body-day" style="display:none">
+        <p style="font-size:11px;color:var(--text-dim);margin-bottom:10px;margin-top:10px;">Pasos principales de la fase diurna. Se repite cada día a partir del primero.</p>
+        <div class="night-order" id="checklist-day"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ROLES PANEL -->
+  <div id="tab-roles" class="panel">
+    <div class="roles-filter">
+      <button class="filter-btn active all" onclick="filterRoles('all', this)">Todos</button>
+      <button class="filter-btn townsfolk" onclick="filterRoles('townsfolk', this)">Aldeanos</button>
+      <button class="filter-btn outsider" onclick="filterRoles('outsider', this)">Forasteros</button>
+      <button class="filter-btn minion" onclick="filterRoles('minion', this)">Esbirros</button>
+      <button class="filter-btn demon" onclick="filterRoles('demon', this)">Demonio</button>
+    </div>
+    <div class="roles-list" id="rolesList"></div>
+  </div>
+
+  <!-- DECISIONS PANEL -->
+  <div id="tab-decisions" class="panel">
+
+    <!-- Instrucciones del juego -->
+    <div class="decision-section">
+      <h3>Instrucciones del juego</h3>
+      <div class="decision-grid">
+        <div class="decision-card" onclick="openDecision('instructions')" style="grid-column:1/-1">
+          <h4>📜 Preparación de la partida</h4>
+          <p>Guía oficial paso a paso para preparar y comenzar una partida</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Guías de referencia -->
+    <div class="decision-section">
+      <h3>Referencia rápida</h3>
+      <div class="decision-grid">
+        <div class="decision-card" onclick="openDecision('execution')">
+          <h4>⚖️ Ejecución</h4>
+          <p>Proceso de nominación, voto y ejecución diurna</p>
+        </div>
+        <div class="decision-card" onclick="openDecision('drunk')">
+          <h4>🍺 Borracho / Envenenado</h4>
+          <p>Qué hacer con el Borracho y el Envenenador</p>
+        </div>
+        <div class="decision-card" onclick="openDecision('storyteller')">
+          <h4>🎭 Poder del Narrador</h4>
+          <p>Qué podés y no podés decidir libremente</p>
+        </div>
+        <div class="decision-card" onclick="openDecision('win')">
+          <h4>🏆 Condiciones de Victoria</h4>
+          <p>Cuándo y cómo termina la partida</p>
+        </div>
+        <div class="decision-card" onclick="openDecision('spy')">
+          <h4>🔍 El Espía</h4>
+          <p>Casos especiales del Espía (Esbirro)</p>
+        </div>
+        <div class="decision-card" onclick="openDecision('investigator')">
+          <h4>🔎 Roles de Info</h4>
+          <p>Cómo dar información a roles detectores</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Player Modal -->
+<div class="player-modal" id="playerModal">
+  <div class="player-modal-content">
+    <h3 id="modalPlayerName">Jugador</h3>
+    <div class="modal-section">
+      <label>Rol asignado</label>
+      <select class="modal-select" id="modalRoleSelect" onchange="updateModalRole()"></select>
+    </div>
+    <div class="modal-section">
+      <label>Estado</label>
+      <div class="token-grid">
+        <div class="token" id="tok-dead" onclick="toggleToken('dead')">☠ Muerto</div>
+        <div class="token" id="tok-drunk" onclick="toggleToken('drunk')">🍺 Ebrio</div>
+        <div class="token" id="tok-poisoned" onclick="toggleToken('poisoned')">🧪 Envenenado</div>
+        <div class="token" id="tok-protected" onclick="toggleToken('protected')">🛡 Protegido</div>
+        <div class="token" id="tok-ghost-vote" onclick="toggleToken('ghost-vote')">🗳 Voto fantasma</div>
+      </div>
+    </div>
+    <div class="modal-section">
+      <label>Notas</label>
+      <input type="text" class="modal-select" id="modalNotes" placeholder="Notas del narrador..." style="width:100%">
+    </div>
+    <div style="display:flex;gap:8px;margin-top:14px">
+      <button class="btn danger" style="flex:1" onclick="killPlayer()">☠ Matar</button>
+      <button class="btn gold" style="flex:1" onclick="savePlayerModal()">Guardar</button>
+      <button class="btn" onclick="closeModal('playerModal')">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Decision Modal -->
+<div class="decision-modal" id="decisionModal">
+  <div class="decision-modal-content">
+    <h3 id="decisionTitle"></h3>
+    <div id="decisionBody"></div>
+    <button class="btn" style="width:100%;margin-top:14px" onclick="closeModal('decisionModal')">Cerrar</button>
+  </div>
+</div>
+
+<script>
+// =================== DATA ===================
+const TB_ROLES = [
+  // Aldeanos
+  { id:'washerwoman', name:'Lavandera', type:'townsfolk', ability:'Sabés que uno de 2 jugadores es un Aldeano específico (pero no cuál de los dos).', notes:'Primera noche. Podés dar info correcta o mostrar un Aldeano no relevante.' },
+  { id:'librarian', name:'Bibliotecario', type:'townsfolk', ability:'Sabés que uno de 2 jugadores es un Forastero específico. (O que no hay Forasteros.)', notes:'Primera noche. Si no hay Forasteros, mostrás dos jugadores + "no hay Forastero".' },
+  { id:'investigator', name:'Investigador', type:'townsfolk', ability:'Sabés que uno de 2 jugadores es un Esbirro específico (pero no cuál de los dos).', notes:'Primera noche. Siempre mostrás un Esbirro real entre los dos.' },
+  { id:'chef', name:'Cocinero', type:'townsfolk', ability:'Sabés cuántos pares de jugadores malvados se sientan adyacentes entre sí.', notes:'Primera noche. Contás pares Mal-Mal que se tocan en el círculo.' },
+  { id:'empath', name:'Empático', type:'townsfolk', ability:'Cada noche sabés cuántos de tus 2 vecinos vivos son Malvados.', notes:'Cada noche. Contás solo vecinos vivos. El Borracho siempre cuenta como Bueno.' },
+  { id:'fortune-teller', name:'Adivina', type:'townsfolk', ability:'Cada noche elegís 2 jugadores: sabés si alguno es el Demonio. Un Bueno puede registrar como "Sí" (Cortina de Humo).', notes:'Podés elegir un Bueno para que siempre dé "Sí" como cortina de humo. Elegilo al inicio y sé consistente.' },
+  { id:'undertaker', name:'Sepulturero', type:'townsfolk', ability:'Cada noche (después de la primera) sabés el rol del jugador ejecutado ayer.', notes:'Revelás el rol real del ejecutado, incluso si era Borracho.' },
+  { id:'monk', name:'Monje', type:'townsfolk', ability:'Cada noche (menos la primera) elegís un jugador (no vos): el Demonio no puede matarlo esta noche.', notes:'Si el Demonio elige al protegido, el Monje los protege. Mostrás "thumbs up" al Demonio.' },
+  { id:'ravenkeeper', name:'Maestro de Cuervos', type:'townsfolk', ability:'Si morís de noche, elegís un jugador y sabés su rol.', notes:'Solo se activa si muere de noche. Mostrás su rol real incluso si está Borracho.' },
+  { id:'virgin', name:'Virgen', type:'townsfolk', ability:'La primera vez que seas nominado, si el nominador es un Aldeano, ese Aldeano muere inmediatamente.', notes:'Solo ocurre en la primera nominación. Si el nominador es Malvado/Forastero, no pasa nada.' },
+  { id:'slayer', name:'Justiciero', type:'townsfolk', ability:'Una vez por partida, durante el día, podés apuntar a alguien. Si es el Demonio, muere.', notes:'Acción pública de día. Solo funciona una vez. Si es Bueno, no pasa nada visible.' },
+  { id:'soldier', name:'Soldado', type:'townsfolk', ability:'Sos inmune a los ataques nocturnos del Demonio.', notes:'El Demonio no puede matarte. Protección pasiva, no necesitás hacer nada.' },
+  { id:'mayor', name:'Alcalde', type:'townsfolk', ability:'Si solo quedan 3 jugadores vivos y ninguno es ejecutado, el pueblo gana. Si morís de noche, otro jugador podría morir en tu lugar.', notes:'La victoria del Alcalde requiere 3 vivos, fase de día, y que el pueblo decida no ejecutar.' },
+  // Forasteros
+  { id:'butler', name:'Mayordomo', type:'outsider', ability:'Cada noche elegís un jugador (tu Amo). Solo podés votar si tu Amo vota también (o sos el que nomina).', notes:'El Mayordomo debe elegir Amo cada noche. No puede votar antes que su Amo.' },
+  { id:'drunk', name:'Borracho', type:'outsider', ability:'No sabés que sos el Borracho. Creés ser un Aldeano pero tu habilidad no funciona. El Narrador te da info falsa.', notes:'Tratalo como ese Aldeano pero dá info incorrecta. Podés ser creativo pero no demasiado obvio.' },
+  { id:'recluse', name:'Recluso', type:'outsider', ability:'Podés registrar como Malvado o como un rol Esbirro/Demonio, incluso si estás muerto.', notes:'Opcional. Podés hacer que el Adivina te marque como Demonio, o el Investigador te muestre como Esbirro.' },
+  { id:'saint', name:'Santo', type:'outsider', ability:'Si sos ejecutado, el pueblo pierde.', notes:'¡Cuidado! Si el pueblo lo ejecuta, el Mal gana. El Narrador no revela el rol hasta después de la ejecución.' },
+  // Esbirros
+  { id:'poisoner', name:'Envenenador', type:'minion', ability:'Cada noche elegís un jugador: su habilidad no funciona hasta la próxima noche del Envenenador.', notes:'Primera noche y todas las noches. El jugador envenenado recibe info incorrecta o su habilidad falla.' },
+  { id:'spy', name:'Espía', type:'minion', ability:'Cada noche ves el Grimorio completo. Podés registrar como Bueno y como un rol Aldeano/Forastero.', notes:'Mostrás el Grimorio al Espía cada noche. Podés hacer que registre como Bueno en roles de info.' },
+  { id:'scarlet-woman', name:'Dama Escarlata', type:'minion', ability:'Si hay 5+ jugadores vivos y el Demonio muere, te convertís en el Demonio.', notes:'Automático. La jugadora se convierte en Diablillo al morir el Diablillo con 5+ vivos. Informale en privado.' },
+  { id:'baron', name:'Barón', type:'minion', ability:'Al inicio hay 2 Forasteros extra. (El setup cambia: +2 Forasteros, -2 Aldeanos).', notes:'Modifica el setup inicial. Con el Barón, usás la fila de distribución de Forasteros+2.' },
+  // Demonio
+  { id:'imp', name:'Diablillo', type:'demon', ability:'Cada noche elegís un jugador: muere. Si te matás a vos mismo, un Esbirro vivo se convierte en Diablillo.', notes:'Acción principal del Demonio. Si elige un jugador protegido por el Monje, no muere. Si se elige a sí mismo, el Esbirro elegido al azar se convierte en Diablillo.' },
+];
+
+const NIGHT_ORDER_FIRST = [
+  { role: 'Esbirros', action: 'Se reconocen entre sí, ven al Diablillo', type:'minion' },
+  { role: 'Diablillo', action: 'Ve a sus Esbirros, recibe 3 bluffs', type:'demon' },
+  { role: 'Envenenador', action: 'Elige a quién envenenar', type:'minion' },
+  { role: 'Lavandera', action: 'Recibe info de Aldeano', type:'townsfolk' },
+  { role: 'Bibliotecario', action: 'Recibe info de Forastero', type:'townsfolk' },
+  { role: 'Investigador', action: 'Recibe info de Esbirro', type:'townsfolk' },
+  { role: 'Cocinero', action: 'Recibe número de pares Malvados', type:'townsfolk' },
+  { role: 'Empático', action: 'Recibe número de vecinos Malvados', type:'townsfolk' },
+  { role: 'Adivina', action: 'Elige 2 jugadores, recibe Sí/No', type:'townsfolk' },
+  { role: 'Mayordomo', action: 'Elige a su Amo', type:'outsider' },
+  { role: 'Espía', action: 'Ve el Grimorio', type:'minion' },
+];
+
+const NIGHT_ORDER_OTHER = [
+  { role: 'Envenenador', action: 'Elige a quién envenenar', type:'minion' },
+  { role: 'Monje', action: 'Elige a quién proteger', type:'townsfolk' },
+  { role: 'Dama Escarlata', action: '(Solo si el Diablillo murió)', type:'minion' },
+  { role: 'Diablillo', action: 'Elige víctima o se suicida', type:'demon' },
+  { role: 'Maestro de Cuervos', action: '(Solo si murió esta noche)', type:'townsfolk' },
+  { role: 'Sepulturero', action: 'Recibe rol del ejecutado ayer', type:'townsfolk' },
+  { role: 'Empático', action: 'Recibe número de vecinos Malvados', type:'townsfolk' },
+  { role: 'Adivina', action: 'Elige 2 jugadores, recibe Sí/No', type:'townsfolk' },
+  { role: 'Mayordomo', action: 'Elige a su Amo', type:'outsider' },
+  { role: 'Espía', action: 'Ve el Grimorio', type:'minion' },
+];
+
+const DECISIONS = {
+  'prep': {
+    title: '📋 Preparación Previa — Antes de empezar',
+    steps: [
+      { text: '<strong>Identificar al Borracho</strong> *(si está en juego)*: el Borracho no sabe que lo es. Anotá qué rol de Aldeano cree tener. Preparate para darle información falsa pero creíble durante toda la partida cuando llegue su turno.' },
+      { text: '<strong>Decidir cómo registra el Recluso</strong> *(si está en juego)*: el Recluso puede registrar como Malvado o como Bueno ante cada habilidad que lo detecte. Pensá de antemano cómo va a registrar ante la Adivina, el Investigador, el Cocinero y el Empático, y sé consistente.' },
+      { text: '<strong>Elegir la Cortina de Humo de la Adivina</strong> *(si la Adivina está en juego)*: elegí un jugador Bueno que siempre va a registrar como "Sí" ante la Adivina, aunque no sea el Diablillo. Anotalo. No puede cambiar durante la partida y el jugador no sabe que fue elegido.' },
+      { text: '<strong>Preparar la información de la Lavandera</strong> *(si está en juego)*: decidí qué 2 jugadores vas a mostrarle y qué ficha de Aldeano. Uno de los dos DEBE ser ese Aldeano real.' },
+      { text: '<strong>Preparar la información del Bibliotecario</strong> *(si está en juego)*: igual que la Lavandera pero con un Forastero. Si no hay Forasteros en juego, preparás la respuesta especial: mostrás 2 jugadores + señal de "ninguno es Forastero".' },
+      { text: '<strong>Preparar la información del Investigador</strong> *(si está en juego)*: igual, pero con un Esbirro. Uno de los 2 jugadores que mostrás debe ser ese Esbirro real.' },
+      { text: '<strong>Contar los pares malvados para el Cocinero</strong> *(si está en juego)*: mirá el círculo de jugadores y contá cuántos pares de jugadores Malvados se sientan adyacentes entre sí. Recordá que el Recluso puede contar como Malvado si así lo decidiste.' },
+      { text: '<strong>Identificar los vecinos del Empático</strong> *(si está en juego)*: mirá quiénes son los dos vecinos vivos del Empático en el círculo y contá cuántos son Malvados. Tené ese número listo.' },
+      { text: '<strong>Preparar los 3 bluffs del Diablillo</strong>: elegí 3 roles de Aldeanos o Forasteros que no estén en juego. Son las identidades que el Diablillo puede fingir. Idealmente elegís roles que no contradigan demasiado la información que el pueblo ya va a recibir esa noche.' },
+      { text: '<strong>Verificar el setup con el Barón</strong> *(si está en juego)*: confirmá que la distribución de roles tenga +2 Forasteros y -2 Aldeanos respecto a la tabla base. Si usaste la asignación automática de la app, esto ya está contemplado.' },
+      { text: '<strong>Completar el Grimorio</strong>: revisá que todos los jugadores tengan rol asignado y que la distribución sea correcta. Es tu documento central durante toda la partida.' },
+    ],
+    note: 'Hacé este checklist en silencio antes de sentar a los jugadores. Una vez que empieza la noche, no podés cambiar las decisiones tomadas.'
+  },
+  'first-night': {
+    title: '🌙 Primera Noche — Paso a paso',
+    steps: [
+      { text: 'Todos cierran los ojos. Anunciá: <strong>"Todos duermen."</strong>' },
+      { text: '<strong>Esbirros</strong>: Abrí ojos de los Esbirros → se reconocen entre sí → ven quién es el Diablillo → duermen.' },
+      { text: '<strong>Diablillo</strong>: Abrí ojos del Diablillo → le mostrás los Esbirros → le das 3 bluffs (roles de Aldeanos no usados) → duerme.' },
+      { text: '<strong>Envenenador</strong>: Despertá al Envenenador → señala a quién envenena → duerme.' },
+      { text: '<strong>Lavandera</strong>: Señalá 2 jugadores + mostrá ficha del Aldeano que hay entre ellos → duerme.' },
+      { text: '<strong>Bibliotecario</strong>: Igual que la Lavandera pero con Forastero.' },
+      { text: '<strong>Investigador</strong>: Señalá 2 jugadores + mostrá ficha del Esbirro que hay entre ellos → duerme.' },
+      { text: '<strong>Cocinero</strong>: Mostrá con dedos cuántos pares Malvado-Malvado adyacentes hay → duerme.' },
+      { text: '<strong>Empático</strong>: Mostrá con dedos cuántos vecinos vivos son Malvados → duerme.' },
+      { text: '<strong>Adivina</strong>: Señala 2 jugadores → hacés sí (pulgar arriba) o no (pulgar abajo) → duerme.' },
+      { text: '<strong>Mayordomo</strong>: Señala a su Amo → duerme.' },
+      { text: '<strong>Espía</strong> (si existe): Mostrá el Grimorio → duerme.' },
+      { text: 'Todos abren los ojos. <strong>"El sol sale."</strong> Comenzá el día 1.' },
+    ],
+    note: 'El Diablillo NO actúa la primera noche (no elige víctima). El orden dentro de cada grupo es flexible.'
+  },
+  'night': {
+    title: '🌑 Noche Normal — Paso a paso',
+    steps: [
+      { text: 'Anunciá el número de muertos de la noche anterior al amanecer.' },
+      { text: '<strong>Envenenador</strong>: elige nueva víctima (o la misma).' },
+      { text: '<strong>Monje</strong>: elige a quién proteger esta noche.' },
+      { text: '<strong>Dama Escarlata</strong>: (automático, solo si el Diablillo murió con 5+ vivos).' },
+      { text: '<strong>Diablillo</strong>: elige víctima. Si elige a alguien protegido por el Monje, mostrá "thumbs up" (la muerte no ocurre). Si se elige a sí mismo → muere y un Esbirro vivo se convierte en Diablillo.' },
+      { text: '<strong>Maestro de Cuervos</strong>: solo si murió esta noche → elige un jugador → le mostrás su rol.' },
+      { text: '<strong>Sepulturero</strong>: le mostrás el rol del ejecutado el día anterior.' },
+      { text: '<strong>Empático</strong>: actualiza conteo de vecinos Malvados.' },
+      { text: '<strong>Adivina</strong>: elige 2 jugadores, recibí respuesta.' },
+      { text: '<strong>Mayordomo</strong>: elige nuevo Amo.' },
+      { text: '<strong>Espía</strong>: ve el Grimorio.' },
+      { text: 'Amanece. Anunciá quién murió (o "nadie murió esta noche").' },
+    ],
+    note: 'Los jugadores muertos no participan de las acciones nocturnas (excepto el Maestro de Cuervos si muere esa noche).'
+  },
+  'instructions': {
+    title: '📜 Preparación de la partida',
+    steps: [
+      { text: '<strong>1. Reuní a tus jugadores:</strong> Tomá una silla por jugador y colocalas una frente a la otra, formando un círculo o un cuadrado, de modo que los jugadores se sienten en el sentido de las agujas del reloj o en sentido contrario. Como Narrador, tendrás que poder entrar y salir del círculo con frecuencia, así que dejá un espacio entre dos sillas. El centro de este espacio deberá estar casi vacío, sin mesas ni obstáculos en el suelo con los que se pueda tropezar.' },
+      { text: '<strong>2. Prepará el Grimorio:</strong> Enganchá el Grimorio fijando los dos clips metálicos lo más cerca posible de las esquinas superior e inferior de la caja de juego, creando un recipiente resistente parecido a un libro. Desplegá y montá el soporte de dos piezas del Grimorio y colocalo donde los jugadores que paseen no vean accidentalmente su contenido. Reuní los suministros de todas las fichas de información, de Noche y de Mortaja en el Grimorio (se recomienda la esquina inferior izquierda del lado derecho).' },
+      { text: '<strong>3. Elegí una edición:</strong> Esta caja incluye tres ediciones: Trouble Brewing, Bad Moon Rising y Sects & Violets. Elegí una para jugar. Destapá y añadí la caja de la edición a la parte inferior izquierda del Grimorio, para poder acceder fácilmente a las fichas de Personaje y de recordatorio. Añadí la Hoja de Noche de esa edición a la parte derecha del Grimorio. Se necesitan 5 o más jugadores para Trouble Brewing y 7 o más para las otras ediciones. Se recomienda empezar con Trouble Brewing y luego pasar a otras ediciones.' },
+      { text: '<strong>4. Prepará la Plaza del Pueblo:</strong> Colocá el tablero de Plaza del Pueblo en el suelo, en el centro de las sillas. Colocá una Ficha de Vida por jugador que coincida con su posición de asiento. Colocá un montón de fichas de voto en el centro de la plaza. Colocá la Hoja del Viajero parcialmente debajo de la Plaza del Pueblo, mostrando el número de Pueblerinos, Forasteros y Esbirros.' },
+      { text: '<strong>5. Leé las reglas a los nuevos jugadores:</strong> La Hoja de reglas describe todas las cosas importantes que un nuevo jugador necesitará saber para empezar a jugar. Simplemente leé el texto en voz alta al grupo, o dejá que quienes quieran lo lean en privado. Hacé demostraciones de las señales de mano, ya que algunos jugadores aprenden visualmente. Si querés, podés leer la parte sobre Nominaciones y Ejecuciones más tarde, cuando empiece la primera nominación. Hay un duplicado de la Hoja de reglas en el reverso de la Hoja del Viajero. Para ahorrar tiempo, podés pedirle a un jugador veterano que lea las reglas mientras vos preparás la partida.' },
+      { text: '<strong>6. Elegí los personajes en secreto:</strong> Sacá todas las fichas de Personaje Pueblerinos de la caja de la edición elegida y elegí el número apropiado para la cantidad de jugadores, como se indica en la Hoja de Preparación. Colocá esas fichas a la izquierda del Grimorio y devolvé las restantes a la caja. Luego hacé lo mismo con los Forasteros, los Esbirros y el Demonio. Hacelo en secreto: los jugadores no saben qué personajes hay en el juego. Si hay más de 15 jugadores, los que sobren pueden ofrecerse como Viajeros. Los Viajeros tienen un gran poder pero menos responsabilidad y suelen agilizar el juego. Entregales la Hoja del Viajero para que elijan su personaje. Para tu primera partida, no se recomienda incluir Viajeros o Fábulas.' },
+      { text: '<strong>Elección de personajes:</strong> Los personajes que elijas afectarán en gran medida el desarrollo de la partida. Elegí lo que creas que será divertido, lo que interactuará bien, o simplemente lo que te sientas capaz de manejar. Para una primera partida de 8 jugadores, se recomienda: Chef, Empático, Adivino, Enterrador, Virgen, Borracho (Investigador), Mujer Escarlata, Granuja. Esta preparación tiene mucha información para el equipo Bueno y es una gran manera de conseguir que la gente se comprometa.' },
+    ],
+    note: 'Se recomienda jugar una o dos partidas con 5-10 jugadores para familiarizarte con el juego antes de intentar partidas más grandes.'
+  },
+  'execution': {
+    title: '⚖️ Ejecuciones — Proceso',
+    steps: [
+      { text: 'Durante el día, cualquier jugador <strong>vivo</strong> puede nominar a otro jugador que aún no fue nominado hoy.' },
+      { text: 'El nominado puede defenderse brevemente.' },
+      { text: 'Se vota a mano alzada: <strong>"¿Quién vota para ejecutar a [nombre]?"</strong>' },
+      { text: 'Si los votos alcanzan la <strong>mayoría</strong> (mitad de vivos redondeado hacia arriba), el jugador queda "en el patíbulo".' },
+      { text: 'Continuá con más nominaciones. El jugador con más votos (que alcanzó la mayoría) es ejecutado al final del día.' },
+      { text: 'Si hay empate en cantidad de votos (ambos superando la mayoría), <strong>nadie es ejecutado</strong>.' },
+      { text: 'Solo se ejecuta <strong>un jugador por día</strong>. Al morir, revelás su rol — con estas excepciones:<br><br>• <strong>Santo:</strong> el rol se revela luego de la ejecución. En ese momento el Mal gana automáticamente.<br>• <strong>Borracho:</strong> revelás el rol de Aldeano que <em>cree</em> tener, no que era el Borracho. El pueblo no se entera todavía.<br>• <strong>Recluso:</strong> podés revelar cualquier rol de Esbirro o Demonio en lugar de su rol real.<br>• <strong>Espía:</strong> podés revelar cualquier rol de Aldeano o Forastero en lugar de Espía.' },
+    ],
+    note: 'Los muertos pueden votar pero solo una vez total (con su "voto fantasma"). Los muertos NO pueden nominar.'
+  },
+  'drunk': {
+    title: '🍺 Borracho y Envenenado',
+    steps: [
+      { text: 'El jugador con rol <strong>Borracho</strong> cree que tiene un rol de Aldeano, pero su habilidad no funciona.' },
+      { text: 'Cuando el Borracho "usa" su habilidad, vos le dás info <strong>incorrecta o sin sentido</strong> (pero convincente).' },
+      { text: 'El <strong>Envenenador</strong> envenena a alguien cada noche. Ese jugador recibe info falsa esa noche y el día siguiente.' },
+      { text: 'Si el Empático está envenenado, podés darle cualquier número (0, 1 o 2) sin importar la realidad.' },
+      { text: 'Si el Adivina está envenenado, podés dar Sí o No sin importar los jugadores elegidos.' },
+      { text: 'Si el Monje está envenenado, su protección no funciona esa noche.' },
+      { text: 'Sé consistente pero no demasiado obvio. El objetivo es hacer el juego desafiante, no frustrante.' },
+    ],
+    note: 'La intoxicación del Borracho es permanente. El veneno del Envenenador dura una ronda (hasta su próxima acción).'
+  },
+  'storyteller': {
+    title: '🎭 Poder del Narrador',
+    steps: [
+      { text: '<strong>Podés decidir</strong>: qué info exacta dar dentro de los límites del rol (ej: qué dos jugadores mostrar a la Lavandera).' },
+      { text: '<strong>Podés decidir</strong>: si el Recluso registra como Malvado o Bueno en cada habilidad que lo detecte.' },
+      { text: '<strong>Podés decidir</strong>: si el Adivina tiene un "cortina de humo" (Bueno que siempre dice Sí) y quién es.' },
+      { text: '<strong>NO podés</strong>: cambiar los roles asignados una vez que empezó la noche.' },
+      { text: '<strong>NO podés</strong>: inventar muertes o eventos que no corresponden a las habilidades.' },
+      { text: '<strong>NO podés</strong>: mentirle a un jugador sobre su propio rol (excepto al Borracho).' },
+      { text: 'Tu meta: hacer el juego <strong>justo y divertido</strong> para ambos bandos, no favorecer a ninguno.' },
+    ],
+    note: 'El Narrador tiene mucha discreción creativa. Usala para equilibrar, no para dominar.'
+  },
+  'win': {
+    title: '🏆 Condiciones de Victoria',
+    steps: [
+      { text: '<strong>El pueblo gana</strong> si el Demonio muere (ya sea por ejecución o por otra habilidad como el Justiciero).' },
+      { text: '<strong>El mal gana</strong> si al inicio de una fase de día solo quedan <strong>2 jugadores vivos</strong>.' },
+      { text: '<strong>El mal gana</strong> si el Santo es ejecutado.' },
+      { text: '<strong>El pueblo gana</strong> si el Alcalde está vivo, quedan 3 vivos y el pueblo decide no ejecutar a nadie ese día.' },
+      { text: 'Si el Diablillo se mata a sí mismo y hay un Esbirro vivo, ese Esbirro se convierte en Diablillo. <strong>El juego continúa.</strong>' },
+      { text: 'Si la Dama Escarlata está viva con 5+ jugadores y el Diablillo muere (por ejecución), ella se convierte en Diablillo. <strong>El juego continúa.</strong>' },
+      { text: 'Al terminar el juego, revelá todos los roles del Grimorio.' },
+    ],
+    note: 'Verificá las condiciones de victoria al inicio de CADA fase de día, antes de que empiece la discusión.'
+  },
+  'spy': {
+    title: '🔍 El Espía — Casos Especiales',
+    steps: [
+      { text: 'Cada noche, el Espía ve el <strong>Grimorio completo</strong>: todos los roles, estados y tokens.' },
+      { text: 'El Espía puede registrar como <strong>Bueno</strong> a ojos del Empático y el Cocinero (el Narrador decide).' },
+      { text: 'El Espía puede registrar como cualquier rol Aldeano/Forastero en habilidades como Lavandera, Bibliotecario, Investigador.' },
+      { text: 'Si el Adivina elige al Espía, podés decir "No" (registra como Bueno) o "Sí" (registra como Malvado). Vos elegís.' },
+      { text: 'Si el Sepulturero detecta al Espía ejecutado, podés mostrar cualquier rol Aldeano/Forastero.' },
+      { text: 'Sé consistente con las decisiones que tomés sobre el Espía durante toda la partida.' },
+    ],
+    note: 'El Espía es extremadamente poderoso por la info que ve. Compensá dando info útil al pueblo cuando sea posible.'
+  },
+  'investigator': {
+    title: '🔎 Roles de Información',
+    steps: [
+      { text: '<strong>Lavandera</strong>: elegís 2 jugadores. Uno DEBE ser el Aldeano que mostrás. El otro puede ser cualquiera.' },
+      { text: '<strong>Bibliotecario</strong>: igual pero con Forastero. Si no hay Forasteros, mostrás 2 jugadores y "ninguno es Forastero".' },
+      { text: '<strong>Investigador</strong>: igual pero con Esbirro. Siempre hay al menos un Esbirro, así que siempre podés dar info.' },
+      { text: '<strong>Cocinero</strong>: contás pares de jugadores Malvados que se sientan juntos en el círculo. El Recluso puede contar (o no).' },
+      { text: '<strong>Empático</strong>: contás vecinos vivos Malvados. El Recluso puede contar como Malvado si querés.' },
+      { text: '<strong>Adivina</strong>: si alguno de los 2 elegidos es el Diablillo → "Sí". También si uno es el "cortina de humo". Sino → "No".' },
+      { text: 'Todos estos roles reciben info la primera noche (excepto Sepulturero y Empático que repiten cada noche).' },
+    ],
+    note: 'Recordá que la info de un jugador intoxicado o envenenado puede ser falsa. Anotá quién está en ese estado.'
+  }
+};
+
+// =================== STATE ===================
+let state = {
+  players: [],
+  gameStarted: false,
+  demonBluffs: [],
+};
+
+// =================== ROLE DISTRIBUTION ===================
+function getRoleDist(n) {
+  // Official TB distribution
+  const dist = {
+    5:  { t:3, o:0, m:1, d:1 },
+    6:  { t:3, o:1, m:1, d:1 },
+    7:  { t:5, o:0, m:1, d:1 },
+    8:  { t:5, o:1, m:1, d:1 },
+    9:  { t:5, o:2, m:1, d:1 },
+    10: { t:7, o:0, m:2, d:1 },
+    11: { t:7, o:1, m:2, d:1 },
+    12: { t:7, o:2, m:2, d:1 },
+    13: { t:9, o:0, m:3, d:1 },
+    14: { t:9, o:1, m:3, d:1 },
+    15: { t:9, o:2, m:3, d:1 },
+  };
+  return dist[n] || null;
+}
+
+// =================== DRAG & DROP ===================
+let dragSrcId = null;
+
+function initDragDrop() {
+  const list = document.getElementById('playerListSetup');
+  if (!list) return;
+
+  // Mouse drag
+  list.querySelectorAll('.player-chip').forEach(chip => {
+    chip.addEventListener('dragstart', e => {
+      dragSrcId = parseInt(chip.dataset.id);
+      chip.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+    });
+    chip.addEventListener('dragend', () => {
+      chip.classList.remove('dragging');
+      list.querySelectorAll('.player-chip').forEach(c => c.classList.remove('drag-over'));
+    });
+    chip.addEventListener('dragover', e => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      list.querySelectorAll('.player-chip').forEach(c => c.classList.remove('drag-over'));
+      chip.classList.add('drag-over');
+    });
+    chip.addEventListener('dragleave', () => chip.classList.remove('drag-over'));
+    chip.addEventListener('drop', e => {
+      e.preventDefault();
+      const targetId = parseInt(chip.dataset.id);
+      if (dragSrcId !== null && dragSrcId !== targetId) {
+        reorderPlayers(dragSrcId, targetId);
+      }
+    });
+  });
+
+  // Touch drag
+  let touchDragId = null;
+  let touchClone = null;
+  let lastOver = null;
+
+  list.querySelectorAll('.drag-handle').forEach(handle => {
+    handle.addEventListener('touchstart', e => {
+      const chip = handle.closest('.player-chip');
+      touchDragId = parseInt(chip.dataset.id);
+      chip.classList.add('dragging');
+
+      // Create visual clone
+      touchClone = chip.cloneNode(true);
+      touchClone.style.cssText = `position:fixed;pointer-events:none;z-index:999;opacity:0.85;width:${chip.offsetWidth}px;border:1px solid var(--gold-dim);border-radius:8px;background:var(--surface2);`;
+      document.body.appendChild(touchClone);
+    }, { passive: true });
+
+    handle.addEventListener('touchmove', e => {
+      if (!touchClone) return;
+      e.preventDefault();
+      const touch = e.touches[0];
+      touchClone.style.left = (touch.clientX - touchClone.offsetWidth / 2) + 'px';
+      touchClone.style.top  = (touch.clientY - 30) + 'px';
+
+      // Find chip under touch
+      touchClone.style.display = 'none';
+      const el = document.elementFromPoint(touch.clientX, touch.clientY);
+      touchClone.style.display = '';
+      const overChip = el ? el.closest('.player-chip') : null;
+      list.querySelectorAll('.player-chip').forEach(c => c.classList.remove('drag-over'));
+      if (overChip && overChip.dataset.id !== String(touchDragId)) {
+        overChip.classList.add('drag-over');
+        lastOver = parseInt(overChip.dataset.id);
+      } else {
+        lastOver = null;
+      }
+    }, { passive: false });
+
+    handle.addEventListener('touchend', () => {
+      if (touchClone) { touchClone.remove(); touchClone = null; }
+      list.querySelectorAll('.player-chip').forEach(c => {
+        c.classList.remove('dragging', 'drag-over');
+      });
+      if (touchDragId !== null && lastOver !== null && touchDragId !== lastOver) {
+        reorderPlayers(touchDragId, lastOver);
+      }
+      touchDragId = null; lastOver = null;
+    });
+  });
+}
+
+function reorderPlayers(srcId, targetId) {
+  const srcIdx = state.players.findIndex(p => p.id === srcId);
+  const tgtIdx = state.players.findIndex(p => p.id === targetId);
+  if (srcIdx === -1 || tgtIdx === -1) return;
+  const [moved] = state.players.splice(srcIdx, 1);
+  state.players.splice(tgtIdx, 0, moved);
+  renderSetup();
+}
+
+// =================== SETUP ===================
+function addPlayer() {
+  const inp = document.getElementById('playerNameInput');
+  const name = inp.value.trim();
+  if (!name) return;
+  if (state.players.length >= 15) { alert('Máximo 15 jugadores'); return; }
+  if (state.players.find(p => p.name.toLowerCase() === name.toLowerCase())) { alert('Ya existe ese nombre'); return; }
+  state.players.push({ id: Date.now(), name, role: null, dead: false, tokens: [], notes: '' });
+  inp.value = '';
+  inp.focus();
+  renderSetup();
+}
+
+function removePlayer(id) {
+  state.players = state.players.filter(p => p.id !== id);
+  renderSetup();
+}
+
+function changePlayerRole(playerId, roleId) {
+  const player = state.players.find(p => p.id === playerId);
+  if (player) {
+    player.role = roleId || null;
+    renderSetup();
+  }
+}
+
+function setPlayerMeta(playerId, key, value) {
+  const player = state.players.find(p => p.id === playerId);
+  if (player) player[key] = value;
+}
+
+function togglePlayerToken(playerId, token) {
+  const player = state.players.find(p => p.id === playerId);
+  if (!player) return;
+  if (!player.tokens) player.tokens = [];
+  const idx = player.tokens.indexOf(token);
+  if (idx === -1) player.tokens.push(token);
+  else player.tokens.splice(idx, 1);
+  renderSetup();
+}
+
+function renderSetup() {
+  const n = state.players.length;
+  document.getElementById('playerCount').textContent = n;
+
+  const list = document.getElementById('playerListSetup');
+  if (n === 0) {
+    list.innerHTML = '<div class="empty-state" style="padding:10px;font-size:11px;">Añadí jugadores →</div>';
+  } else {
+    const typeLabel = { townsfolk:'Aldeanos', outsider:'Forasteros', minion:'Esbirros', demon:'Demonio' };
+    const grouped = { townsfolk:[], outsider:[], minion:[], demon:[] };
+    TB_ROLES.forEach(r => grouped[r.type].push(r));
+    Object.keys(grouped).forEach(t => grouped[t].sort((a,b) => a.name.localeCompare(b.name,'es')));
+
+    const buildOptions = (selectedId) => {
+      const prefix = { townsfolk:'🟢', outsider:'🔵', minion:'🔴', demon:'🔴' };
+      let opts = `<option value="">— Sin rol —</option>`;
+      for (const type of ['townsfolk','outsider','minion','demon']) {
+        opts += `<optgroup label="— ${typeLabel[type]} —">`;
+        opts += grouped[type].map(r =>
+          `<option value="${r.id}" ${selectedId === r.id ? 'selected' : ''}>${prefix[type]} ${r.name}</option>`
+        ).join('');
+        opts += `</optgroup>`;
+      }
+      return opts;
+    };
+
+    const typeColor = { townsfolk:'#27ae60', outsider:'#2980b9', minion:'#e74c3c', demon:'#ff6b6b' };
+    const hasFortuneTeller = state.players.some(p => p.role === 'fortune-teller');
+    const hasPoisoner      = state.players.some(p => p.role === 'poisoner');
+
+    list.innerHTML = state.players.map(p => {
+      const role = p.role ? TB_ROLES.find(r => r.id === p.role) : null;
+      const color = role ? typeColor[role.type] : 'var(--text-dim)';
+      const smokeActive  = p.tokens && p.tokens.includes('smoke');
+      const poisonActive = p.tokens && p.tokens.includes('poisoned');
+      const isDrunk   = p.role === 'drunk';
+      const isRecluse = p.role === 'recluse';
+
+      const drunkBeliefSelect = isDrunk ? `<select onchange="setPlayerMeta(${p.id},'drunkBelief',this.value)"
+          style="background:var(--surface);border:1px solid rgba(243,156,18,0.5);border-radius:4px;color:rgba(243,156,18,0.9);padding:4px 7px;font-size:11px;font-family:'Lato',sans-serif;outline:none;width:100%;cursor:pointer">
+          <option value="">🍺 Cree que es... (Aldeano)</option>
+          ${grouped.townsfolk.map(r => `<option value="${r.id}" ${(p.drunkBelief||'') === r.id ? 'selected':''}>${r.name}</option>`).join('')}
+        </select>` : '';
+
+      const recluseSelect = isRecluse ? `<select onchange="setPlayerMeta(${p.id},'recluseAs',this.value)"
+          style="background:var(--surface);border:1px solid rgba(41,128,185,0.5);border-radius:4px;color:#2980b9;padding:4px 7px;font-size:11px;font-family:'Lato',sans-serif;outline:none;width:100%;cursor:pointer">
+          <option value="" ${(p.recluseAs||'') === '' ? 'selected':''}>💨 Figura como...</option>
+          <option value="outsider" ${(p.recluseAs||'') === 'outsider' ? 'selected':''}>🔵 Forastero</option>
+          <option value="minion"   ${(p.recluseAs||'') === 'minion'   ? 'selected':''}>🔴 Esbirro</option>
+          <option value="demon"    ${(p.recluseAs||'') === 'demon'    ? 'selected':''}>🔴 Demonio</option>
+        </select>` : '';
+
+      const smokeBtn  = hasFortuneTeller
+        ? `<button class="status-toggle ${smokeActive  ? 'active-smoke'  : ''}" onclick="event.stopPropagation();togglePlayerToken(${p.id},'smoke')"    title="Cortina de humo (Adivina)">💨</button>`
+        : '';
+      const poisonBtn = hasPoisoner
+        ? `<button class="status-toggle ${poisonActive ? 'active-poison' : ''}" onclick="event.stopPropagation();togglePlayerToken(${p.id},'poisoned')" title="Envenenado">🧪</button>`
+        : '';
+
+      return `<div class="player-chip" draggable="true" data-id="${p.id}" style="flex-direction:column;align-items:stretch;gap:6px;padding:8px 10px">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div style="display:flex;align-items:center;gap:4px">
+            <span class="drag-handle" title="Arrastrar para reordenar">⠿</span>
+            <span style="font-family:'Cinzel',serif;font-size:12px">${p.name}</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:4px">
+            ${smokeBtn}
+            ${poisonBtn}
+            <button onclick="event.stopPropagation();removePlayer(${p.id})" style="margin-left:2px;background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:15px;line-height:1;padding:0 2px">×</button>
+          </div>
+        </div>
+        <select onchange="changePlayerRole(${p.id}, this.value)"
+          style="background:var(--surface);border:1px solid ${role ? color : 'var(--border)'};border-radius:4px;color:${color};padding:4px 7px;font-size:11px;font-family:'Lato',sans-serif;outline:none;width:100%;cursor:pointer">
+          ${buildOptions(p.role)}
+        </select>
+        ${drunkBeliefSelect}
+        ${recluseSelect}
+      </div>`;
+    }).join('');
+
+    setTimeout(initDragDrop, 0);
+  }
+
+  // Distribution + validation
+  const dist = getRoleDist(n);
+  const distEl = document.getElementById('roleDist');
+  let validEl = document.getElementById('distValidation');
+  if (!validEl) {
+    validEl = document.createElement('div');
+    validEl.id = 'distValidation';
+    distEl.parentNode.insertBefore(validEl, distEl.nextSibling);
+  }
+
+  if (!dist) {
+    distEl.innerHTML = n < 5
+      ? '<div style="color:var(--text-dim);font-size:11px;font-style:italic">Mínimo 5 jugadores</div>'
+      : '<div style="color:var(--text-dim);font-size:11px;font-style:italic">Máximo 15 jugadores</div>';
+    validEl.innerHTML = '';
+    return;
+  }
+
+  const assigned = { townsfolk:0, outsider:0, minion:0, demon:0 };
+  state.players.forEach(p => {
+    const role = p.role ? TB_ROLES.find(r => r.id === p.role) : null;
+    if (role) assigned[role.type]++;
+  });
+
+  const anyAssigned = (assigned.townsfolk + assigned.outsider + assigned.minion + assigned.demon) > 0;
+
+  const rowHtml = (type, label, expected, actual) => {
+    let status = '';
+    if (anyAssigned) {
+      if (actual === expected) {
+        status = `<span style="color:#27ae60;font-size:11px">✓</span>`;
+      } else {
+        const diff = actual - expected;
+        status = `<span style="color:#e74c3c;font-size:10px;font-weight:700">${diff>0?'+':''}${diff}</span>`;
+      }
+    }
+    return `<div class="role-dist-row ${type}">
+      <span>${label}</span>
+      <div style="display:flex;align-items:center;gap:6px">
+        ${anyAssigned ? `<span style="color:var(--text-dim);font-size:11px">${actual}/</span>` : ''}
+        <span>${expected}</span>
+        ${status}
+      </div>
+    </div>`;
+  };
+
+  const hasBaron = state.players.some(p => p.role === 'baron');
+
+  // Baron note
+  let baronEl = document.getElementById('baronNote');
+  if (!baronEl) {
+    baronEl = document.createElement('div');
+    baronEl.id = 'baronNote';
+    distEl.parentNode.insertBefore(baronEl, distEl);
+  }
+  baronEl.innerHTML = hasBaron
+    ? `<div style="margin-bottom:8px;padding:6px 10px;background:rgba(192,57,43,0.08);border:1px solid rgba(192,57,43,0.4);border-radius:5px;font-size:11px;color:#e74c3c">
+        🃏 <strong>Barón en juego:</strong> reemplazá 2 Aldeanos por 2 Forasteros respecto a la tabla base.
+      </div>`
+    : '';
+
+  distEl.innerHTML =
+    rowHtml('townsfolk', 'Aldeanos',   dist.t, assigned.townsfolk) +
+    rowHtml('outsider',  'Forasteros', dist.o, assigned.outsider) +
+    rowHtml('minion',    'Esbirros',   dist.m, assigned.minion) +
+    rowHtml('demon',     'Demonio',    dist.d, assigned.demon);
+
+  if (!anyAssigned) {
+    validEl.innerHTML = '';
+  } else if (assigned.townsfolk===dist.t && assigned.outsider===dist.o && assigned.minion===dist.m && assigned.demon===dist.d) {
+    validEl.innerHTML = `<div style="margin-top:8px;padding:6px 10px;background:rgba(39,174,96,0.1);border:1px solid #27ae60;border-radius:5px;font-size:11px;color:#27ae60">✓ Distribución correcta</div>`;
+  } else {
+    const checks = [
+      { label:'Aldeanos',   exp:dist.t, act:assigned.townsfolk },
+      { label:'Forasteros', exp:dist.o, act:assigned.outsider },
+      { label:'Esbirros',   exp:dist.m, act:assigned.minion },
+      { label:'Demonio',    exp:dist.d, act:assigned.demon },
+    ];
+    const errors = checks.filter(c => c.act !== c.exp)
+      .map(c => { const d=c.act-c.exp; return `${c.label}: ${c.act}/${c.exp} (${d>0?'+':''}${d})`; });
+    validEl.innerHTML = `<div style="margin-top:8px;padding:6px 10px;background:rgba(192,57,43,0.1);border:1px solid #e74c3c;border-radius:5px;font-size:11px;color:#e74c3c">⚠️ ${errors.join(' · ')}</div>`;
+  }
+}
+
+function randomizeRoles() {
+  const n = state.players.length;
+  const dist = getRoleDist(n);
+  if (!dist) { alert('Necesitás entre 5 y 15 jugadores'); return; }
+
+  const townsfolk = TB_ROLES.filter(r => r.type === 'townsfolk');
+  const outsiders = TB_ROLES.filter(r => r.type === 'outsider');
+  const minions = TB_ROLES.filter(r => r.type === 'minion');
+  const demons = TB_ROLES.filter(r => r.type === 'demon');
+
+  const shuffle = arr => [...arr].sort(() => Math.random() - 0.5);
+
+  const selected = [
+    ...shuffle(townsfolk).slice(0, dist.t),
+    ...shuffle(outsiders).slice(0, dist.o),
+    ...shuffle(minions).slice(0, dist.m),
+    ...shuffle(demons).slice(0, dist.d),
+  ];
+  const shuffledPlayers = shuffle(state.players);
+  const shuffledRoles = shuffle(selected);
+
+  shuffledPlayers.forEach((p, i) => {
+    p.role = shuffledRoles[i].id;
+  });
+
+  // Demon bluffs
+  const usedRoleIds = selected.map(r => r.id);
+  const unusedGood = TB_ROLES.filter(r => (r.type==='townsfolk'||r.type==='outsider') && !usedRoleIds.includes(r.id));
+  state.demonBluffs = shuffle(unusedGood).slice(0, 3).map(b => b.id);
+
+  renderSetup();
+  // Re-render bluff step if checklist is open
+  if (sectionOpen['prep']) renderChecklist('prep');
+}
+
+function startGame() {
+  if (state.players.length < 5) { alert('Necesitás al menos 5 jugadores'); return; }
+  const unassigned = state.players.filter(p => !p.role);
+  if (unassigned.length > 0) {
+    if (!confirm(`${unassigned.length} jugador(es) sin rol. ¿Continuar igual?`)) return;
+  }
+  state.gameStarted = true;
+  showTab('game');
+}
+
+// =================== ROLES PANEL ===================
+let currentRoleFilter = 'all';
+function renderRoles() {
+  const list = document.getElementById('rolesList');
+  const filtered = currentRoleFilter === 'all' ? TB_ROLES : TB_ROLES.filter(r => r.type === currentRoleFilter);
+  const sorted = [...filtered].sort((a, b) => a.name.localeCompare(b.name, 'es'));
+  list.innerHTML = sorted.map(r =>
+    `<div class="role-card ${r.type}" id="rc-${r.id}" onclick="toggleRoleCard('${r.id}')">
+      <div class="role-header">
+        <span class="role-name">${r.name}</span>
+        <span class="role-type-tag">${{townsfolk:'Aldeano',outsider:'Forastero',minion:'Esbirro',demon:'Demonio'}[r.type]}</span>
+        <span class="expand-icon">▼</span>
+      </div>
+      <div class="role-ability">${r.ability}</div>
+      <div class="role-notes">💡 ${r.notes}</div>
+    </div>`
+  ).join('');
+}
+
+function toggleRoleCard(id) {
+  const el = document.getElementById('rc-' + id);
+  el.classList.toggle('expanded');
+}
+
+function filterRoles(type, btn) {
+  currentRoleFilter = type;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active','townsfolk','outsider','minion','demon','all'));
+  btn.classList.add('active', type);
+  renderRoles();
+}
+
+// =================== PLAYER MODAL ===================
+function openPlayerModal(id) {
+  if (!state.gameStarted) return;
+  const player = state.players.find(p => p.id === id);
+  if (!player) return;
+  state.currentModalPlayer = id;
+  document.getElementById('modalPlayerName').textContent = player.name;
+
+  const sel = document.getElementById('modalRoleSelect');
+  sel.innerHTML = `<option value="">Sin rol</option>` +
+    TB_ROLES.map(r => `<option value="${r.id}" ${player.role===r.id?'selected':''}>${r.name} (${r.type})</option>`).join('');
+
+  // Tokens
+  ['dead','drunk','poisoned','protected','ghost-vote'].forEach(t => {
+    const el = document.getElementById('tok-' + t);
+    if (el) el.classList.toggle('active', player.tokens && player.tokens.includes(t));
+  });
+
+  document.getElementById('modalNotes').value = player.notes || '';
+  document.getElementById('playerModal').classList.add('open');
+}
+
+function updateModalRole() {
+  // live preview could go here
+}
+
+function toggleToken(token) {
+  const player = state.players.find(p => p.id === state.currentModalPlayer);
+  if (!player) return;
+  if (!player.tokens) player.tokens = [];
+  const idx = player.tokens.indexOf(token);
+  if (idx === -1) player.tokens.push(token);
+  else player.tokens.splice(idx, 1);
+  const el = document.getElementById('tok-' + token);
+  if (el) el.classList.toggle('active', player.tokens.includes(token));
+}
+
+function killPlayer() {
+  const player = state.players.find(p => p.id === state.currentModalPlayer);
+  if (!player) return;
+  player.dead = !player.dead;
+  savePlayerModal();
+}
+
+function savePlayerModal() {
+  const player = state.players.find(p => p.id === state.currentModalPlayer);
+  if (!player) return;
+  player.role = document.getElementById('modalRoleSelect').value || null;
+  player.notes = document.getElementById('modalNotes').value;
+  closeModal('playerModal');
+  renderSetup();
+}
+
+// =================== DECISIONS ===================
+function openDecision(key) {
+  const d = DECISIONS[key];
+  if (!d) return;
+  document.getElementById('decisionTitle').textContent = d.title;
+  document.getElementById('decisionBody').innerHTML =
+    d.steps.map((s, i) =>
+      `<div class="decision-step">
+        <div class="step-num">${i+1}</div>
+        <div class="step-text">${s.text}</div>
+      </div>`
+    ).join('') +
+    (d.note ? `<div class="decision-note">📌 ${d.note}</div>` : '');
+  document.getElementById('decisionModal').classList.add('open');
+}
+
+function closeModal(id) {
+  document.getElementById(id).classList.remove('open');
+  state.currentModalPlayer = null;
+}
+
+// =================== CHECKLISTS ===================
+const CHECKLIST_STEPS = {
+  'prep': [
+    { text: 'Identificar al Borracho y qué rol de Aldeano cree tener', type:'outsider', roleId:'drunk',
+      detail: 'El Borracho no sabe que lo es. Anotá mentalmente (o en papel) qué Aldeano cree ser. Cuando llegue su turno nocturno, lo tratás como ese Aldeano pero le das información incorrecta o sin sentido.' },
+    { text: 'Decidir cómo registra el Recluso ante cada habilidad', type:'outsider', roleId:'recluse',
+      detail: 'El Recluso puede registrar como Malvado o Bueno según cada habilidad que lo detecte. Decidí de antemano: ¿la Adivina lo marca como Demonio? ¿El Investigador lo muestra como Esbirro? ¿El Cocinero lo cuenta como par Malvado? Sé consistente durante toda la partida.' },
+    { text: 'Elegir la Cortina de Humo de la Adivina', type:'townsfolk', roleId:'fortune-teller',
+      detail: 'Elegí un jugador Bueno que siempre registrará como "Sí" ante la Adivina, aunque no sea el Diablillo. Anotalo. No puede cambiar durante la partida y el jugador elegido no sabe que fue seleccionado. Esto evita que la Adivina resuelva el juego demasiado fácil.' },
+    { text: 'Preparar info de la Lavandera', type:'townsfolk', roleId:'washerwoman',
+      detail: 'Decidí qué 2 jugadores mostrarle y qué ficha de Aldeano señalar. UNO de los dos jugadores mostrados DEBE ser ese Aldeano real. El otro puede ser cualquier jugador (incluso Malvado). No podés inventar un Aldeano que no esté en juego.' },
+    { text: 'Preparar info del Bibliotecario', type:'townsfolk', roleId:'librarian',
+      detail: 'Igual que la Lavandera pero con un Forastero. Si no hay Forasteros en juego (ej: partida sin Barón y distribución sin Outsiders), mostrás 2 jugadores cualquiera y señalás que ninguno es Forastero.' },
+    { text: 'Preparar info del Investigador', type:'townsfolk', roleId:'investigator',
+      detail: 'Igual que la Lavandera pero con un Esbirro. Uno de los 2 jugadores mostrados DEBE ser ese Esbirro real. Siempre hay al menos un Esbirro, así que siempre podés dar información.' },
+    { text: 'Contar pares de Malvados adyacentes para el Cocinero', type:'townsfolk', roleId:'chef',
+      detail: 'Mirá el círculo de jugadores sentados y contá cuántos pares de jugadores Malvados se tocan (están uno al lado del otro). Cada par se cuenta una sola vez. Recordá que el Recluso puede contar como Malvado si así lo decidiste.' },
+    { text: 'Identificar vecinos del Empático y contar Malvados', type:'townsfolk', roleId:'empath',
+      detail: 'Mirá quiénes son los dos vecinos inmediatos (izquierda y derecha) del Empático en el círculo. Contá cuántos de esos dos son Malvados. Tené ese número listo. El Borracho cuenta como Bueno aunque sea Forastero.' },
+    { text: 'Elegir 3 bluffs para el Diablillo', type:'demon', roleId:'imp', bluffStep: true,
+      detail: 'Elegí 3 roles de Aldeanos o Forasteros que NO estén en juego esta partida. Son las identidades que el Diablillo puede usar para bluffear sin ser contradicho por las fichas del Grimorio. Idealmente no elijas roles cuya ausencia sea muy obvia (ej: si el Cocinero ya reveló pares, no dar un bluff de Cocinero).' },
+    { text: 'Verificar setup del Barón: +2 Forasteros, -2 Aldeanos', type:'minion', roleId:'baron',
+      detail: 'Si el Barón está en juego, la distribución debe tener 2 Forasteros más y 2 Aldeanos menos respecto a la tabla estándar. Verificá que los roles asignados reflejen esto antes de empezar.' },
+    { text: 'Revisar el Grimorio final', type:'townsfolk', roleId:null,
+      detail: 'Confirmá que todos los jugadores tienen rol asignado, que la distribución de tipos es correcta, y que tenés anotada toda la información que preparaste: Cortina de Humo, Borracho, Recluso, bluffs del Diablillo. Es tu documento central durante toda la partida.' },
+  ],
+  'first-night': [
+    { text: 'Todos cierran los ojos — "Todos duermen"', type:'townsfolk', roleId:null,
+      detail: 'Pedile a todos que cierren los ojos y bajen la cabeza. Esperá a que haya silencio antes de continuar.' },
+    { text: 'Esbirros: se despiertan, se reconocen, ven al Diablillo → duermen', type:'minion', roleId:null,
+      detail: 'Pedí que abran los ojos solo los Esbirros. Se miran entre sí para reconocerse. Señalás quién es el Diablillo. Luego duermen.' },
+    { text: 'Diablillo: se despierta, ve a sus Esbirros, recibe 3 bluffs → duerme', type:'demon', roleId:'imp',
+      detail: 'El Diablillo abre los ojos. Le señalás quiénes son sus Esbirros. Luego le mostrás (en papel o con fichas) los 3 roles de bluff que preparaste. Duerme.' },
+    { text: 'Envenenador: señala a quién envenena → duerme', type:'minion', roleId:'poisoner',
+      detail: 'El Envenenador despierta y señala a un jugador. Ese jugador queda envenenado: su habilidad no funcionará esta noche ni mañana. Anotalo. El Envenenador duerme.' },
+    { text: 'Lavandera: recibe 2 jugadores + ficha del Aldeano → duerme', type:'townsfolk', roleId:'washerwoman',
+      detail: 'Señalás 2 jugadores con los dedos y le mostrás la ficha del Aldeano que está entre ellos (el que preparaste). La Lavandera no sabe cuál de los dos es ese Aldeano. Duerme.' },
+    { text: 'Bibliotecario: recibe 2 jugadores + ficha del Forastero → duerme', type:'townsfolk', roleId:'librarian',
+      detail: 'Igual que la Lavandera pero con un Forastero. Si no hay Forasteros, señalás 2 jugadores y hacés un gesto de "ninguno" (cabeza negando o manos cruzadas). Duerme.' },
+    { text: 'Investigador: recibe 2 jugadores + ficha del Esbirro → duerme', type:'townsfolk', roleId:'investigator',
+      detail: 'Señalás 2 jugadores y le mostrás la ficha del Esbirro que está entre ellos. El Investigador no sabe cuál de los dos es ese Esbirro. Duerme.' },
+    { text: 'Cocinero: recibe número de pares Malvados adyacentes → duerme', type:'townsfolk', roleId:'chef',
+      detail: 'Mostrás con los dedos el número que calculaste (pares de Malvados sentados uno al lado del otro). El número puede ser 0. Duerme.' },
+    { text: 'Empático: recibe número de vecinos Malvados → duerme', type:'townsfolk', roleId:'empath',
+      detail: 'Mostrás con los dedos 0, 1 o 2: la cantidad de vecinos inmediatos del Empático que son Malvados. Duerme.' },
+    { text: 'Adivina: señala 2 jugadores → recibe Sí/No → duerme', type:'townsfolk', roleId:'fortune-teller',
+      detail: 'La Adivina señala 2 jugadores. Si alguno es el Diablillo, o alguno es la Cortina de Humo, respondés con pulgar arriba (Sí). De lo contrario, pulgar abajo (No). Duerme.' },
+    { text: 'Mayordomo: señala a su Amo → duerme', type:'outsider', roleId:'butler',
+      detail: 'El Mayordomo señala a un jugador que será su Amo esta ronda. Solo podrá votar si su Amo vota primero. Duerme.' },
+    { text: 'Espía: ve el Grimorio completo → duerme', type:'minion', roleId:'spy',
+      detail: 'Mostrás el Grimorio al Espía: todos los roles, estados y tokens de todos los jugadores. Duerme.' },
+    { text: 'Todos abren los ojos — "El sol sale" — Comienza el Día 1', type:'townsfolk', roleId:null,
+      detail: 'Anunciá el amanecer. Informá si hubo muertos durante la noche (en la primera noche generalmente no hay). Comenzá la fase de discusión del Día 1.' },
+  ],
+  'night': [
+    { text: 'Todos cierran los ojos — anunciá los muertos de anoche', type:'townsfolk', roleId:null,
+      detail: 'Pedí silencio y que todos cierren los ojos. Antes de empezar las acciones, anunciá en voz alta quiénes murieron durante la noche anterior (si los hay).' },
+    { text: 'Envenenador: señala a quién envenena → duerme', type:'minion', roleId:'poisoner',
+      detail: 'El Envenenador despierta y señala a un jugador. Puede repetir el mismo de la noche anterior o cambiar. Ese jugador queda envenenado hasta la próxima acción del Envenenador. Anotalo.' },
+    { text: 'Monje: señala a quién protege → duerme', type:'townsfolk', roleId:'monk',
+      detail: 'El Monje señala a un jugador (no puede elegirse a sí mismo). Si el Diablillo elige esa misma víctima esta noche, la muerte no ocurre. Anotá a quién protege.' },
+    { text: 'Dama Escarlata: (automático) si el Diablillo murió con 5+ vivos', type:'minion', roleId:'scarlet-woman',
+      detail: 'Este paso es automático, no requiere acción. Si el Diablillo murió (por ejecución) mientras había 5 o más jugadores vivos, la Dama Escarlata se convierte en el nuevo Diablillo. Informale en privado.' },
+    { text: 'Diablillo: señala a su víctima → duerme', type:'demon', roleId:'imp',
+      detail: 'El Diablillo señala a un jugador para matar. Si ese jugador está protegido por el Monje, hacés thumbs up y la muerte no ocurre. Si el Diablillo se señala a sí mismo, muere y un Esbirro vivo elegido al azar se convierte en el nuevo Diablillo.' },
+    { text: 'Maestro de Cuervos: solo si murió esta noche → elige un jugador → recibe su rol', type:'townsfolk', roleId:'ravenkeeper',
+      detail: 'Este paso solo ocurre si el Maestro de Cuervos fue la víctima del Diablillo esta noche. Despertalo, señala a un jugador, y mostrále la ficha del rol real de ese jugador.' },
+    { text: 'Sepulturero: recibe el rol del ejecutado ayer → duerme', type:'townsfolk', roleId:'undertaker',
+      detail: 'Si hubo una ejecución ayer, el Sepulturero despierta y le mostrás la ficha del rol real del jugador ejecutado. Si no hubo ejecución, no lo despertás.' },
+    { text: 'Empático: recibe número de vecinos Malvados actualizado → duerme', type:'townsfolk', roleId:'empath',
+      detail: 'Contás nuevamente los vecinos vivos inmediatos del Empático y cuántos son Malvados. El conteo puede cambiar si algún vecino murió. Mostrás el número con los dedos.' },
+    { text: 'Adivina: señala 2 jugadores → recibe Sí/No → duerme', type:'townsfolk', roleId:'fortune-teller',
+      detail: 'La Adivina señala 2 jugadores. Si alguno es el Diablillo o la Cortina de Humo → pulgar arriba. Si ninguno → pulgar abajo. Funciona igual aunque alguno de los dos esté muerto.' },
+    { text: 'Mayordomo: señala a su nuevo Amo → duerme', type:'outsider', roleId:'butler',
+      detail: 'El Mayordomo elige un nuevo Amo para el día siguiente. Puede repetir el mismo o cambiarlo.' },
+    { text: 'Espía: ve el Grimorio completo → duerme', type:'minion', roleId:'spy',
+      detail: 'Mostrás el Grimorio actualizado al Espía: roles, estados (muerto/vivo, envenenado, etc.) de todos los jugadores.' },
+    { text: 'Todos abren los ojos — anunciá quién murió esta noche', type:'townsfolk', roleId:null,
+      detail: 'Anunciá el amanecer. Informá quién murió durante la noche (o "nadie murió esta noche"). Comenzá la fase de discusión del nuevo día.' },
+  ],
+  'day': [
+    { text: 'Anunciá quién murió durante la noche', type:'townsfolk', roleId:null,
+      detail: 'Nombrá en voz alta a los jugadores que murieron. Los jugadores muertos reciben un voto fantasma que pueden usar una sola vez durante el resto de la partida. Conservan su rol en secreto (a menos que sean ejecutados).' },
+    { text: 'Verificar condición de victoria del equipo Malo', type:'demon', roleId:null,
+      detail: 'Si quedan 2 jugadores vivos (incluyendo el Diablillo), el equipo Malo gana automáticamente. No se necesita nominación ni ejecución. Anuncialo y terminá la partida.' },
+    { text: 'Verificar condición de victoria del Alcalde', type:'townsfolk', roleId:'mayor',
+      detail: 'Si quedan 3 jugadores vivos y no se ejecuta a nadie ese día, el Alcalde puede forzar la victoria del equipo Bueno. Esto es automático: si se cumple la condición y el Alcalde está vivo y sano, el equipo Bueno gana.' },
+    { text: 'Fase de debate libre', type:'townsfolk', roleId:null,
+      detail: 'Los jugadores hablan libremente, comparten información, acusan y debaten. No hay orden fijo. Como Narrador, no intervenís en el debate salvo para aclarar reglas. Este es el momento central del juego.' },
+    { text: 'Nominaciones', type:'townsfolk', roleId:null,
+      detail: 'Cualquier jugador vivo puede nominar a otro jugador vivo para ser ejecutado. Cada jugador solo puede nominar una vez por día, y cada jugador solo puede ser nominado una vez por día. Anunciás cada nominación en voz alta.' },
+    { text: 'Verificar habilidad de la Virgen (primera nominación)', type:'townsfolk', roleId:'virgin',
+      detail: 'Si la Virgen es nominada por primera vez y quien la nomina es un Pueblerino, ese jugador Pueblerino es ejecutado inmediatamente. La nominación termina ahí para ese día. Solo aplica si la Virgen está sana (no envenenada).' },
+    { text: 'Votación', type:'townsfolk', roleId:null,
+      detail: 'Para cada nominación, los jugadores votan levantando la mano. El Narrador cuenta los votos. Se necesita más de la mitad de los jugadores vivos para ejecutar. En empate, nadie muere. El Mayordomo solo puede votar si su Amo vota primero.' },
+    { text: 'Verificar habilidad del Justiciero', type:'townsfolk', roleId:'slayer',
+      detail: 'En cualquier momento del día, el Justiciero puede declarar públicamente que usa su habilidad y apunta a un jugador. Si ese jugador es el Diablillo, muere inmediatamente. Si no lo es, no pasa nada. Solo puede usarlo una vez en toda la partida.' },
+    { text: 'Ejecución', type:'townsfolk', roleId:null,
+      detail: 'Solo puede ejecutarse un jugador por día (el que recibió más votos suficientes). Anunciás su rol real en voz alta al ejecutarlo. Excepción: el Borracho revela el rol falso que cree tener; el Recluso y el Espía pueden revelar un rol alternativo a tu elección. Si el Santo es ejecutado, el equipo Malo gana inmediatamente.' },
+    { text: 'Verificar condición de victoria del equipo Bueno', type:'townsfolk', roleId:null,
+      detail: 'Si el Diablillo fue ejecutado, el equipo Bueno gana. Anuncialo y revelá los roles de todos. Si la Dama Escarlata entró en juego y el Diablillo original fue ejecutado, eso no cuenta: el nuevo Diablillo sigue vivo.' },
+    { text: 'Iniciar la siguiente noche', type:'townsfolk', roleId:null,
+      detail: 'Si nadie ganó, pedile a todos que cierren los ojos y comienza la siguiente noche. Usá la sección "Noche Normal" del checklist.' },
+  ],
+};
+
+const checklistDone = { 'prep': [], 'first-night': [], 'night': [], 'day': [] };
+const nightDeceased = []; // índices de pasos de noche marcados como muertos
+
+function isRoleInGame(roleId) {
+  if (!roleId) return true;
+  const playersWithRoles = state.players.filter(p => p.role);
+  if (playersWithRoles.length === 0) return true;
+  // Rol real en juego
+  if (state.players.some(p => p.role === roleId)) return true;
+  // Rol que cree tener el Borracho también cuenta como "en juego"
+  if (state.players.some(p => p.role === 'drunk' && p.drunkBelief === roleId)) return true;
+  return false;
+}
+
+function renderChecklist(key) {
+  const steps = CHECKLIST_STEPS[key];
+  const done = checklistDone[key];
+  const colorMap = { townsfolk:'#27ae60', outsider:'#2980b9', minion:'#e74c3c', demon:'#ff6b6b' };
+  const el = document.getElementById('checklist-' + key);
+  if (!el) return;
+
+  el.innerHTML = steps.map((step, i) => {
+    const isDone = done.includes(i);
+    const inGame = isRoleInGame(step.roleId);
+    const isDeceased = key === 'night' && nightDeceased.includes(i);
+    const grayed = !inGame || isDeceased;
+
+    let rowClass = 'night-step';
+    if (isDone) rowClass += ' done';
+
+    let nameStyle = `color:${colorMap[step.type]||'inherit'};font-family:'Lato',sans-serif;font-weight:${isDone?'300':'400'}`;
+    if (grayed) nameStyle += ';opacity:0.35';
+
+    const checkIcon = isDone
+      ? `<span style="color:#27ae60;font-size:13px;width:20px;text-align:center;flex-shrink:0">✓</span>`
+      : `<span style="color:var(--gold-dim);font-family:'Cinzel',serif;font-size:11px;width:20px;text-align:center;flex-shrink:0">${i+1}</span>`;
+
+    const deadCheckbox = key === 'night' && step.roleId && !['imp','scarlet-woman'].includes(step.roleId)
+      ? `<span title="Marcar jugador como muerto" onclick="event.stopPropagation();toggleNightDeceased(${i})"
+           style="font-size:13px;cursor:pointer;flex-shrink:0;opacity:${isDeceased?'1':'0.3'};transition:opacity 0.2s"
+           onmouseenter="this.style.opacity='1'" onmouseleave="this.style.opacity='${isDeceased?'1':'0.3'}'">💀</span>`
+      : `<span style="width:18px;flex-shrink:0"></span>`;
+
+    const detailBtn = step.detail
+      ? `<span onclick="event.stopPropagation();showStepDetail('${key}',${i})"
+           title="Ver detalle"
+           style="font-size:11px;cursor:pointer;color:var(--gold-dim);flex-shrink:0;padding:0 2px;transition:color 0.2s"
+           onmouseenter="this.style.color='var(--gold)'" onmouseleave="this.style.color='var(--gold-dim)'">＋</span>`
+      : '';
+
+    const bluffInline = step.bluffStep
+      ? (() => {
+          if (!state.demonBluffs || state.demonBluffs.length === 0)
+            return `<div style="margin-top:6px;font-size:10px;color:var(--text-dim);font-style:italic">Asigná roles al azar primero para ver los bluffs</div>`;
+          return `<div style="margin-top:6px;display:flex;gap:5px;flex-wrap:wrap">` +
+            state.demonBluffs.map(id => {
+              const r = TB_ROLES.find(r => r.id === id);
+              return r ? `<span style="background:rgba(255,107,107,0.12);border:1px solid rgba(255,107,107,0.35);border-radius:4px;padding:3px 8px;font-size:11px;color:#ff6b6b">${r.name}</span>` : '';
+            }).join('') + `</div>`;
+        })()
+      : '';
+
+    return `<div class="${rowClass}" onclick="toggleChecklistStep('${key}',${i})" style="gap:8px;align-items:flex-start;flex-wrap:wrap">
+      <div style="display:flex;align-items:center;gap:8px;width:100%">
+        ${checkIcon}
+        <span style="${nameStyle};flex:1;line-height:1.4">${step.text}</span>
+        ${detailBtn}
+        ${deadCheckbox}
+      </div>
+      ${bluffInline}
+    </div>`;
+  }).join('');
+}
+
+function toggleChecklistStep(key, i) {
+  const done = checklistDone[key];
+  const idx = done.indexOf(i);
+  if (idx === -1) done.push(i);
+  else done.splice(idx, 1);
+  renderChecklist(key);
+}
+
+function toggleNightDeceased(i) {
+  const idx = nightDeceased.indexOf(i);
+  if (idx === -1) nightDeceased.push(i);
+  else nightDeceased.splice(idx, 1);
+  renderChecklist('night');
+}
+
+function resetChecklist(key) {
+  checklistDone[key] = [];
+  if (key === 'night') nightDeceased.length = 0;
+  if (sectionOpen[key]) renderChecklist(key);
+}
+
+// Step detail modal
+function showStepDetail(key, i) {
+  const step = CHECKLIST_STEPS[key][i];
+  if (!step || !step.detail) return;
+  document.getElementById('decisionTitle').textContent = step.text;
+  document.getElementById('decisionBody').innerHTML =
+    `<p style="font-size:13px;line-height:1.6;color:var(--text)">${step.detail}</p>`;
+  document.getElementById('decisionModal').classList.add('open');
+}
+
+// =================== COLLAPSIBLE SECTIONS ===================
+const sectionOpen = { 'prep': false, 'first-night': false, 'night': false, 'day': false };
+
+function toggleSection(key) {
+  sectionOpen[key] = !sectionOpen[key];
+  const body = document.getElementById('body-' + key);
+  const arrow = document.getElementById('arrow-' + key);
+  body.style.display = sectionOpen[key] ? 'block' : 'none';
+  arrow.classList.toggle('open', sectionOpen[key]);
+  if (sectionOpen[key]) renderChecklist(key);
+}
+
+// =================== TABS ===================
+function showTab(name) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  const tabs = ['setup','game','roles','decisions'];
+  const idx = tabs.indexOf(name);
+  document.querySelectorAll('.tab')[idx].classList.add('active');
+  if (name === 'roles') renderRoles();
+}
+
+// =================== INIT ===================
+renderSetup();
+renderRoles();
+</script>
+</body>
+</html>
