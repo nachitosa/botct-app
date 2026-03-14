@@ -1,0 +1,1926 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>BotC — Asistente del Narrador</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700&family=Cinzel:wght@400;600&family=Lato:wght@300;400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0608;
+    --surface: #140d10;
+    --surface2: #1e1318;
+    --border: #3a1f28;
+    --gold: #c9a84c;
+    --gold-dim: #7a5e28;
+    --red: #8b1a1a;
+    --red-bright: #c0392b;
+    --blue: #1a3a5c;
+    --blue-bright: #2980b9;
+    --green: #1a4a2a;
+    --green-bright: #27ae60;
+    --purple: #3a1a5c;
+    --purple-bright: #8e44ad;
+    --text: #e8d5b0;
+    --text-dim: #8a7560;
+    --outsider: #1a3a5c;
+    --minion: #4a1a1a;
+    --demon: #1a0a0a;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Lato', sans-serif;
+    font-weight: 300;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Atmospheric background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(ellipse at 20% 20%, rgba(139,26,26,0.08) 0%, transparent 60%),
+                radial-gradient(ellipse at 80% 80%, rgba(26,58,92,0.08) 0%, transparent 60%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .app { position: relative; z-index: 1; max-width: 900px; margin: 0 auto; padding: 0 12px 80px; }
+
+  /* Header */
+  header {
+    text-align: center;
+    padding: 24px 0 16px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 20px;
+  }
+  header h1 {
+    font-family: 'Cinzel Decorative', serif;
+    font-size: clamp(14px, 4vw, 22px);
+    color: var(--gold);
+    letter-spacing: 0.08em;
+    text-shadow: 0 0 30px rgba(201,168,76,0.4);
+  }
+  header p {
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-top: 4px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+  }
+
+  /* Tabs */
+  .tabs {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 20px;
+    background: var(--surface);
+    border-radius: 8px;
+    padding: 4px;
+    border: 1px solid var(--border);
+  }
+  .tab {
+    flex: 1;
+    padding: 8px 4px;
+    background: none;
+    border: none;
+    color: var(--text-dim);
+    font-family: 'Cinzel', serif;
+    font-size: clamp(9px, 2.5vw, 12px);
+    cursor: pointer;
+    border-radius: 5px;
+    transition: all 0.2s;
+    letter-spacing: 0.05em;
+  }
+  .tab.active {
+    background: var(--surface2);
+    color: var(--gold);
+    border: 1px solid var(--border);
+  }
+  .tab:hover:not(.active) { color: var(--text); }
+
+  /* Panels */
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  /* === SETUP PANEL === */
+  .setup-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  @media (max-width: 500px) { .setup-grid { grid-template-columns: 1fr; } }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px;
+  }
+  .card h3 {
+    font-family: 'Cinzel', serif;
+    font-size: 11px;
+    color: var(--gold);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+
+  .player-input {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+  .player-input input {
+    flex: 1;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    color: var(--text);
+    padding: 7px 10px;
+    font-family: 'Lato', sans-serif;
+    font-size: 13px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .player-input input:focus { border-color: var(--gold-dim); }
+  .player-input input::placeholder { color: var(--text-dim); }
+
+  .btn {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 7px 14px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-family: 'Cinzel', serif;
+    font-size: 11px;
+    letter-spacing: 0.05em;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+  .btn:hover { border-color: var(--gold-dim); color: var(--gold); }
+  .btn.primary { background: var(--red); border-color: var(--red-bright); color: var(--text); }
+  .btn.primary:hover { background: var(--red-bright); }
+  .btn.gold { background: rgba(201,168,76,0.1); border-color: var(--gold-dim); color: var(--gold); }
+  .btn.gold:hover { background: rgba(201,168,76,0.2); }
+  .btn.danger { border-color: var(--red); color: var(--red-bright); }
+  .btn.danger:hover { background: var(--red); color: var(--text); }
+
+  .player-list { display: flex; flex-direction: column; gap: 5px; }
+  .player-chip {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 6px 10px;
+    font-size: 13px;
+  }
+  .player-chip button {
+    background: none;
+    border: none;
+    color: var(--text-dim);
+    cursor: pointer;
+    font-size: 15px;
+    line-height: 1;
+    padding: 0 2px;
+  }
+  .player-chip button:hover { color: var(--red-bright); }
+
+  .drag-handle {
+    color: var(--text-dim);
+    cursor: grab;
+    font-size: 14px;
+    padding: 0 4px 0 0;
+    user-select: none;
+    touch-action: none;
+    flex-shrink: 0;
+  }
+  .drag-handle:active { cursor: grabbing; }
+  .player-chip.dragging {
+    opacity: 0.4;
+    border-style: dashed;
+    border-color: var(--gold-dim);
+  }
+  .player-chip.drag-over {
+    border-color: var(--gold);
+    background: rgba(201,168,76,0.08);
+  }
+
+  .status-toggle {
+    background: none;
+    border: 1px solid transparent;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 15px;
+    padding: 2px 4px;
+    line-height: 1;
+    opacity: 0.25;
+    transition: opacity 0.15s, border-color 0.15s, background 0.15s;
+  }
+  .status-toggle:hover { opacity: 0.6; }
+  .status-toggle.active-smoke {
+    opacity: 1;
+    background: rgba(127,140,141,0.2);
+    border-color: rgba(127,140,141,0.5);
+  }
+  .status-toggle.active-poison {
+    opacity: 1;
+    background: rgba(142,68,173,0.15);
+    border-color: rgba(142,68,173,0.5);
+  }
+
+  .count-display {
+    font-size: 12px;
+    color: var(--text-dim);
+    margin-bottom: 8px;
+  }
+  .count-display span { color: var(--gold); font-weight: 700; }
+
+  .role-dist {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    font-size: 12px;
+  }
+  .role-dist-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 4px 8px;
+    border-radius: 4px;
+  }
+  .role-dist-row.townsfolk { background: rgba(39,174,96,0.1); color: #27ae60; }
+  .role-dist-row.outsider { background: rgba(41,128,185,0.1); color: #2980b9; }
+  .role-dist-row.minion { background: rgba(192,57,43,0.1); color: #e74c3c; }
+  .role-dist-row.demon { background: rgba(100,0,0,0.2); color: #ff6b6b; }
+
+  /* === GAME PANEL === */
+  .phase-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    margin-bottom: 14px;
+  }
+  .phase-info { font-family: 'Cinzel', serif; font-size: 13px; }
+  .phase-info .day { font-size: 10px; color: var(--text-dim); letter-spacing: 0.1em; }
+  .phase-info .phase { color: var(--gold); }
+
+  .players-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+
+  .player-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+  .player-card:hover { border-color: var(--gold-dim); }
+  .player-card.dead {
+    opacity: 0.45;
+    border-style: dashed;
+  }
+  .player-card.dead .player-name { text-decoration: line-through; }
+  .player-card .player-name {
+    font-family: 'Cinzel', serif;
+    font-size: 12px;
+    margin-bottom: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .player-card .role-badge {
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 3px;
+    display: inline-block;
+    margin-bottom: 6px;
+    letter-spacing: 0.05em;
+  }
+  .player-card.townsfolk .role-badge { background: rgba(39,174,96,0.15); color: #27ae60; border: 1px solid rgba(39,174,96,0.3); }
+  .player-card.outsider .role-badge { background: rgba(41,128,185,0.15); color: #2980b9; border: 1px solid rgba(41,128,185,0.3); }
+  .player-card.minion .role-badge { background: rgba(192,57,43,0.15); color: #e74c3c; border: 1px solid rgba(192,57,43,0.3); }
+  .player-card.demon .role-badge { background: rgba(100,0,0,0.25); color: #ff6b6b; border: 1px solid rgba(192,57,43,0.5); }
+  .player-card.unassigned .role-badge { background: rgba(138,117,96,0.15); color: var(--text-dim); border: 1px solid var(--border); }
+
+  .player-card .status-icons { font-size: 14px; display: flex; gap: 3px; flex-wrap: wrap; }
+  .player-card .dead-ghost {
+    position: absolute;
+    top: 6px; right: 8px;
+    font-size: 18px;
+    opacity: 0.5;
+  }
+
+  .btn-row { display: flex; gap: 6px; flex-wrap: wrap; }
+
+  /* Nomination tracker */
+  .nom-tracker {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 14px;
+    margin-bottom: 14px;
+  }
+  .nom-tracker h3 { font-family: 'Cinzel', serif; font-size: 11px; color: var(--gold); letter-spacing: 0.1em; margin-bottom: 8px; }
+  .nom-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .nom-select {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 6px 10px;
+    border-radius: 5px;
+    font-family: 'Lato', sans-serif;
+    font-size: 12px;
+    outline: none;
+    flex: 1;
+    min-width: 100px;
+  }
+  .vote-count {
+    font-family: 'Cinzel', serif;
+    font-size: 20px;
+    color: var(--gold);
+    text-align: center;
+    padding: 4px 12px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    min-width: 50px;
+  }
+  .majority-info { font-size: 11px; color: var(--text-dim); }
+  .majority-info span { color: var(--gold); }
+
+  .nom-history { margin-top: 10px; display: flex; flex-direction: column; gap: 4px; }
+  .nom-entry {
+    font-size: 11px;
+    color: var(--text-dim);
+    display: flex;
+    justify-content: space-between;
+    padding: 3px 0;
+    border-bottom: 1px solid rgba(58,31,40,0.3);
+  }
+  .nom-entry .executed { color: var(--red-bright); font-weight: 700; }
+
+  /* === ROLES PANEL === */
+  .roles-filter {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+  }
+  .filter-btn {
+    padding: 5px 12px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    background: none;
+    color: var(--text-dim);
+    font-size: 11px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: 'Cinzel', serif;
+    letter-spacing: 0.05em;
+  }
+  .filter-btn.active.townsfolk { background: rgba(39,174,96,0.15); border-color: #27ae60; color: #27ae60; }
+  .filter-btn.active.outsider { background: rgba(41,128,185,0.15); border-color: #2980b9; color: #2980b9; }
+  .filter-btn.active.minion { background: rgba(192,57,43,0.15); border-color: #e74c3c; color: #e74c3c; }
+  .filter-btn.active.demon { background: rgba(100,0,0,0.2); border-color: #ff6b6b; color: #ff6b6b; }
+  .filter-btn.active.all { background: rgba(201,168,76,0.15); border-color: var(--gold); color: var(--gold); }
+
+  .roles-list { display: flex; flex-direction: column; gap: 6px; }
+  .role-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .role-card:hover { border-color: var(--gold-dim); }
+  .role-card .role-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 0;
+  }
+  .role-card.expanded .role-header { margin-bottom: 8px; }
+  .role-card .role-name {
+    font-family: 'Cinzel', serif;
+    font-size: 13px;
+    color: var(--text);
+    flex: 1;
+  }
+  .role-card .role-type-tag {
+    font-size: 9px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 2px 7px;
+    border-radius: 10px;
+  }
+  .townsfolk .role-type-tag { background: rgba(39,174,96,0.15); color: #27ae60; border: 1px solid rgba(39,174,96,0.3); }
+  .outsider .role-type-tag { background: rgba(41,128,185,0.15); color: #2980b9; border: 1px solid rgba(41,128,185,0.3); }
+  .minion .role-type-tag { background: rgba(192,57,43,0.15); color: #e74c3c; border: 1px solid rgba(192,57,43,0.3); }
+  .demon .role-type-tag { background: rgba(100,0,0,0.2); color: #ff6b6b; border: 1px solid rgba(192,57,43,0.5); }
+
+  .role-card .role-ability {
+    font-size: 12px;
+    color: var(--text-dim);
+    line-height: 1.5;
+    display: none;
+  }
+  .role-card.expanded .role-ability { display: block; }
+  .role-card .role-notes {
+    font-size: 11px;
+    color: var(--gold-dim);
+    margin-top: 6px;
+    font-style: italic;
+    display: none;
+  }
+  .role-card.expanded .role-notes { display: block; }
+  .role-card .expand-icon { color: var(--text-dim); font-size: 10px; transition: transform 0.2s; }
+  .role-card.expanded .expand-icon { transform: rotate(180deg); }
+
+  /* === DECISIONS PANEL === */
+  .decision-section { margin-bottom: 16px; }
+  .decision-section h3 {
+    font-family: 'Cinzel', serif;
+    font-size: 11px;
+    color: var(--gold);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .decision-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  @media (max-width: 500px) { .decision-grid { grid-template-columns: 1fr; } }
+
+  .decision-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .decision-card:hover { border-color: var(--gold-dim); background: var(--surface2); }
+  .decision-card h4 {
+    font-family: 'Cinzel', serif;
+    font-size: 12px;
+    color: var(--text);
+    margin-bottom: 4px;
+  }
+  .decision-card p { font-size: 11px; color: var(--text-dim); line-height: 1.4; }
+
+  .decision-modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.85);
+    z-index: 100;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  .decision-modal.open { display: flex; }
+  .decision-modal-content {
+    background: var(--surface);
+    border: 1px solid var(--gold-dim);
+    border-radius: 10px;
+    padding: 20px;
+    max-width: 480px;
+    width: 100%;
+    max-height: 80vh;
+    overflow-y: auto;
+  }
+  .decision-modal-content h3 {
+    font-family: 'Cinzel', serif;
+    color: var(--gold);
+    font-size: 14px;
+    margin-bottom: 12px;
+  }
+  .decision-step {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 10px;
+    align-items: flex-start;
+  }
+  .step-num {
+    background: var(--gold);
+    color: var(--bg);
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-weight: 700;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+  .step-text { font-size: 12px; line-height: 1.5; color: var(--text); }
+  .step-text strong { color: var(--gold); }
+  .decision-note {
+    background: rgba(201,168,76,0.08);
+    border: 1px solid var(--gold-dim);
+    border-radius: 5px;
+    padding: 8px 10px;
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-top: 10px;
+    font-style: italic;
+  }
+
+  /* Modal for player */
+  .player-modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.85);
+    z-index: 100;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  .player-modal.open { display: flex; }
+  .player-modal-content {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px;
+    max-width: 380px;
+    width: 100%;
+  }
+  .player-modal-content h3 {
+    font-family: 'Cinzel', serif;
+    color: var(--gold);
+    font-size: 16px;
+    margin-bottom: 14px;
+    text-align: center;
+  }
+  .modal-section { margin-bottom: 12px; }
+  .modal-section label {
+    display: block;
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 5px;
+  }
+  .modal-select {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 8px 10px;
+    border-radius: 5px;
+    font-family: 'Lato', sans-serif;
+    font-size: 13px;
+    outline: none;
+  }
+  .token-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+  }
+  .token {
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    color: var(--text-dim);
+    transition: all 0.2s;
+  }
+  .token.active { background: rgba(201,168,76,0.15); border-color: var(--gold); color: var(--gold); }
+
+  .log-container {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px;
+    max-height: 200px;
+    overflow-y: auto;
+  }
+  .log-entry {
+    font-size: 11px;
+    color: var(--text-dim);
+    padding: 3px 0;
+    border-bottom: 1px solid rgba(58,31,40,0.3);
+    display: flex;
+    gap: 8px;
+  }
+  .log-entry .log-time { color: var(--gold-dim); flex-shrink: 0; }
+  .log-entry.important { color: var(--text); }
+  .log-entry.death { color: #e74c3c; }
+  .log-entry.execution { color: #ff6b6b; font-weight: 700; }
+
+  /* Night order */
+  .night-order {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+  .night-step {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    transition: all 0.2s;
+    cursor: pointer;
+  }
+  .night-step.done {
+    opacity: 0.4;
+    text-decoration: line-through;
+  }
+  .night-step .n-order {
+    color: var(--gold-dim);
+    font-family: 'Cinzel', serif;
+    font-size: 11px;
+    width: 20px;
+    text-align: center;
+  }
+  .night-step .n-role {
+    font-family: 'Cinzel', serif;
+    font-size: 12px;
+    flex: 1;
+  }
+  .night-step .n-action {
+    font-size: 11px;
+    color: var(--text-dim);
+    text-align: right;
+  }
+
+  .empty-state {
+    text-align: center;
+    color: var(--text-dim);
+    font-size: 13px;
+    padding: 30px 20px;
+    font-style: italic;
+  }
+
+  .win-banner {
+    display: none;
+    text-align: center;
+    padding: 16px;
+    border-radius: 8px;
+    margin-bottom: 14px;
+    font-family: 'Cinzel', serif;
+  }
+  .win-banner.good { background: rgba(39,174,96,0.15); border: 1px solid #27ae60; color: #27ae60; }
+  .win-banner.evil { background: rgba(192,57,43,0.15); border: 1px solid #e74c3c; color: #e74c3c; }
+  .win-banner h2 { font-size: 18px; margin-bottom: 4px; }
+  .win-banner p { font-size: 12px; opacity: 0.8; }
+
+  /* Collapsible checklist sections */
+  .checklist-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+    user-select: none;
+    padding: 2px 0;
+  }
+  .checklist-header:hover h3 { color: var(--gold); }
+  .section-arrow {
+    font-size: 9px;
+    color: var(--text-dim);
+    transition: transform 0.2s;
+    display: inline-block;
+  }
+  .section-arrow.open { transform: rotate(90deg); color: var(--gold); }
+  .checklist-body { overflow: hidden; }
+
+  /* Scroll */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: var(--surface); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <img src="data:image/png;base64,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" alt="Blood on the Clocktower" style="max-height:100px;max-width:85%;object-fit:contain;display:block;margin:0 auto 2px">
+    <p style="font-size:11px;color:var(--text-dim);margin-top:2px;letter-spacing:0.15em;text-transform:uppercase">Asistente del Narrador · Trouble Brewing</p>
+  </header>
+
+  <div class="tabs">
+    <button class="tab active" onclick="showTab('setup')">Jugadores</button>
+    <button class="tab" onclick="showTab('game')">Partida</button>
+    <button class="tab" onclick="showTab('roles')">Roles</button>
+    <button class="tab" onclick="showTab('decisions')">Guías</button>
+  </div>
+
+  <!-- SETUP PANEL -->
+  <div id="tab-setup" class="panel active">
+    <div class="setup-grid">
+      <div class="card">
+        <h3>Jugadores</h3>
+        <div class="player-input">
+          <input type="text" id="playerNameInput" placeholder="Nombre del jugador..." maxlength="20" onkeydown="if(event.key==='Enter') addPlayer()">
+          <button class="btn" onclick="addPlayer()">+</button>
+        </div>
+        <div id="playerListSetup" class="player-list">
+          <div class="empty-state" style="padding:10px;font-size:11px;">Añadí jugadores →</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Distribución de Roles</h3>
+        <div class="count-display">Jugadores: <span id="playerCount">0</span></div>
+        <div class="role-dist" id="roleDist">
+          <div class="role-dist-row townsfolk"><span>Aldeanos</span><span>—</span></div>
+          <div class="role-dist-row outsider"><span>Forasteros</span><span>—</span></div>
+          <div class="role-dist-row minion"><span>Esbirros</span><span>—</span></div>
+          <div class="role-dist-row demon"><span>Demonio</span><span>—</span></div>
+        </div>
+        <br>
+        <button class="btn gold" onclick="randomizeRoles()" style="width:100%;margin-bottom:6px">🎲 Asignar roles al azar</button>
+        <button class="btn primary" onclick="startGame()" style="width:100%">▶ Iniciar Partida</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- GAME PANEL -->
+  <div id="tab-game" class="panel">
+
+    <!-- Checklist: Preparación -->
+    <div class="card checklist-section" style="margin-bottom:8px">
+      <div class="checklist-header" onclick="toggleSection('prep')">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="section-arrow" id="arrow-prep">▶</span>
+          <h3 style="margin:0">📋 Preparación Previa</h3>
+        </div>
+        <button class="btn" style="padding:4px 10px;font-size:10px" onclick="event.stopPropagation();resetChecklist('prep')">↺</button>
+      </div>
+      <div class="checklist-body" id="body-prep" style="display:none">
+        <p style="font-size:11px;color:var(--text-dim);margin-bottom:10px;margin-top:10px;">Hacé esto en silencio antes de sentar a los jugadores. Una vez que empieza la noche, no podés cambiar estas decisiones.</p>
+        <div class="night-order" id="checklist-prep"></div>
+      </div>
+    </div>
+
+    <!-- Checklist: Primera Noche -->
+    <div class="card checklist-section" style="margin-bottom:8px">
+      <div class="checklist-header" onclick="toggleSection('first-night')">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="section-arrow" id="arrow-first-night">▶</span>
+          <h3 style="margin:0">🌙 Primera Noche</h3>
+        </div>
+        <button class="btn" style="padding:4px 10px;font-size:10px" onclick="event.stopPropagation();resetChecklist('first-night')">↺</button>
+      </div>
+      <div class="checklist-body" id="body-first-night" style="display:none">
+        <p style="font-size:11px;color:var(--text-dim);margin-bottom:10px;margin-top:10px;">El Diablillo NO elige víctima esta noche.</p>
+        <div class="night-order" id="checklist-first-night"></div>
+      </div>
+    </div>
+
+    <!-- Checklist: Noche Normal -->
+    <div class="card checklist-section" style="margin-bottom:8px">
+      <div class="checklist-header" onclick="toggleSection('night')">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="section-arrow" id="arrow-night">▶</span>
+          <h3 style="margin:0">🌑 Noche Normal</h3>
+        </div>
+        <button class="btn" style="padding:4px 10px;font-size:10px" onclick="event.stopPropagation();resetChecklist('night')">↺</button>
+      </div>
+      <div class="checklist-body" id="body-night" style="display:none">
+        <p style="font-size:11px;color:var(--text-dim);margin-bottom:10px;margin-top:10px;">Usá esto a partir de la noche 2 en adelante.</p>
+        <div class="night-order" id="checklist-night"></div>
+      </div>
+    </div>
+
+    <!-- Checklist: Día -->
+    <div class="card checklist-section" style="margin-bottom:8px">
+      <div class="checklist-header" onclick="toggleSection('day')">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="section-arrow" id="arrow-day">▶</span>
+          <h3 style="margin:0">☀️ Día</h3>
+        </div>
+        <button class="btn" style="padding:4px 10px;font-size:10px" onclick="event.stopPropagation();resetChecklist('day')">↺</button>
+      </div>
+      <div class="checklist-body" id="body-day" style="display:none">
+        <p style="font-size:11px;color:var(--text-dim);margin-bottom:10px;margin-top:10px;">Pasos principales de la fase diurna. Se repite cada día a partir del primero.</p>
+        <div class="night-order" id="checklist-day"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ROLES PANEL -->
+  <div id="tab-roles" class="panel">
+    <div class="roles-filter">
+      <button class="filter-btn active all" onclick="filterRoles('all', this)">Todos</button>
+      <button class="filter-btn townsfolk" onclick="filterRoles('townsfolk', this)">Aldeanos</button>
+      <button class="filter-btn outsider" onclick="filterRoles('outsider', this)">Forasteros</button>
+      <button class="filter-btn minion" onclick="filterRoles('minion', this)">Esbirros</button>
+      <button class="filter-btn demon" onclick="filterRoles('demon', this)">Demonio</button>
+    </div>
+    <div class="roles-list" id="rolesList"></div>
+  </div>
+
+  <!-- DECISIONS PANEL -->
+  <div id="tab-decisions" class="panel">
+
+    <!-- Instrucciones del juego -->
+    <div class="decision-section">
+      <h3>Instrucciones del juego</h3>
+      <div class="decision-grid">
+        <div class="decision-card" onclick="openDecision('instructions')" style="grid-column:1/-1">
+          <h4>📜 Preparación de la partida</h4>
+          <p>Guía oficial paso a paso para preparar y comenzar una partida</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Guías de referencia -->
+    <div class="decision-section">
+      <h3>Referencia rápida</h3>
+      <div class="decision-grid">
+        <div class="decision-card" onclick="openDecision('execution')">
+          <h4>⚖️ Ejecución</h4>
+          <p>Proceso de nominación, voto y ejecución diurna</p>
+        </div>
+        <div class="decision-card" onclick="openDecision('drunk')">
+          <h4>🍺 Borracho / Envenenado</h4>
+          <p>Qué hacer con el Borracho y el Envenenador</p>
+        </div>
+        <div class="decision-card" onclick="openDecision('storyteller')">
+          <h4>🎭 Poder del Narrador</h4>
+          <p>Qué podés y no podés decidir libremente</p>
+        </div>
+        <div class="decision-card" onclick="openDecision('win')">
+          <h4>🏆 Condiciones de Victoria</h4>
+          <p>Cuándo y cómo termina la partida</p>
+        </div>
+        <div class="decision-card" onclick="openDecision('spy')">
+          <h4>🔍 El Espía</h4>
+          <p>Casos especiales del Espía (Esbirro)</p>
+        </div>
+        <div class="decision-card" onclick="openDecision('investigator')">
+          <h4>🔎 Roles de Info</h4>
+          <p>Cómo dar información a roles detectores</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Player Modal -->
+<div class="player-modal" id="playerModal">
+  <div class="player-modal-content">
+    <h3 id="modalPlayerName">Jugador</h3>
+    <div class="modal-section">
+      <label>Rol asignado</label>
+      <select class="modal-select" id="modalRoleSelect" onchange="updateModalRole()"></select>
+    </div>
+    <div class="modal-section">
+      <label>Estado</label>
+      <div class="token-grid">
+        <div class="token" id="tok-dead" onclick="toggleToken('dead')">☠ Muerto</div>
+        <div class="token" id="tok-drunk" onclick="toggleToken('drunk')">🍺 Ebrio</div>
+        <div class="token" id="tok-poisoned" onclick="toggleToken('poisoned')">🧪 Envenenado</div>
+        <div class="token" id="tok-protected" onclick="toggleToken('protected')">🛡 Protegido</div>
+        <div class="token" id="tok-ghost-vote" onclick="toggleToken('ghost-vote')">🗳 Voto fantasma</div>
+      </div>
+    </div>
+    <div class="modal-section">
+      <label>Notas</label>
+      <input type="text" class="modal-select" id="modalNotes" placeholder="Notas del narrador..." style="width:100%">
+    </div>
+    <div style="display:flex;gap:8px;margin-top:14px">
+      <button class="btn danger" style="flex:1" onclick="killPlayer()">☠ Matar</button>
+      <button class="btn gold" style="flex:1" onclick="savePlayerModal()">Guardar</button>
+      <button class="btn" onclick="closeModal('playerModal')">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Decision Modal -->
+<div class="decision-modal" id="decisionModal">
+  <div class="decision-modal-content">
+    <h3 id="decisionTitle"></h3>
+    <div id="decisionBody"></div>
+    <button class="btn" style="width:100%;margin-top:14px" onclick="closeModal('decisionModal')">Cerrar</button>
+  </div>
+</div>
+
+<script>
+// =================== DATA ===================
+const TB_ROLES = [
+  // Aldeanos
+  { id:'washerwoman', name:'Lavandera', type:'townsfolk', ability:'Señalá 2 jugadores a la Lavandera y mostrale una carta de Aldeano. UNO de los dos jugadores señalados DEBE ser ese Aldeano. El otro jugador puede tener cualquier rol.', notes:'Primera noche. Podés dar info correcta o mostrar un Aldeano no relevante.' },
+  { id:'librarian', name:'Bibliotecario', type:'townsfolk', ability:'Sabés que uno de 2 jugadores es un Forastero específico. (O que no hay Forasteros.)', notes:'Primera noche. Si no hay Forasteros, mostrás dos jugadores + "no hay Forastero".' },
+  { id:'investigator', name:'Investigador', type:'townsfolk', ability:'Señalá 2 jugadores al Investigador y mostrale una carta de Esbirro. UNO de los dos jugadores señalados DEBE ser ese Esbirro. El otro jugador puede tener cualquier rol.', notes:'Primera noche. Siempre mostrás un Esbirro real entre los dos.' },
+  { id:'chef', name:'Cocinero', type:'townsfolk', ability:'Sabés cuántos pares de jugadores malvados hay en la partida.', notes:'Primera noche. Contás todos los pares posibles de jugadores Malvados (sin importar dónde estén sentados).' },
+  { id:'empath', name:'Empático', type:'townsfolk', ability:'Cada noche sabés cuántos de tus 2 vecinos vivos son Malvados.', notes:'Cada noche. Contás solo vecinos vivos. El Borracho siempre cuenta como Bueno.' },
+  { id:'fortune-teller', name:'Adivina', type:'townsfolk', ability:'Cada noche elegís 2 jugadores: sabés si alguno es el Demonio. Un Bueno puede registrar como "Sí" (Cortina de Humo).', notes:'Podés elegir un Bueno para que siempre dé "Sí" como cortina de humo. Elegilo al inicio y sé consistente.' },
+  { id:'undertaker', name:'Sepulturero', type:'townsfolk', ability:'Cada noche (después de la primera) sabés el rol del jugador ejecutado ayer.', notes:'Revelás el rol real del ejecutado, incluso si era Borracho.' },
+  { id:'monk', name:'Monje', type:'townsfolk', ability:'Cada noche (menos la primera) elegís un jugador (no vos): el Demonio no puede matarlo esta noche.', notes:'Si el Demonio elige al protegido, el Monje los protege. Mostrás "thumbs up" al Demonio.' },
+  { id:'ravenkeeper', name:'Maestro de Cuervos', type:'townsfolk', ability:'Si morís de noche, elegís un jugador y sabés su rol.', notes:'Solo se activa si muere de noche. Mostrás su rol real incluso si está Borracho.' },
+  { id:'virgin', name:'Virgen', type:'townsfolk', ability:'La primera vez que seas nominado, si el nominador es un Aldeano, ese Aldeano muere inmediatamente.', notes:'Solo ocurre en la primera nominación. Si el nominador es Malvado/Forastero, no pasa nada.' },
+  { id:'slayer', name:'Justiciero', type:'townsfolk', ability:'Una vez por partida, durante el día, podés apuntar a alguien. Si es el Demonio, muere.', notes:'Acción pública de día. Solo funciona una vez. Si es Bueno, no pasa nada visible.' },
+  { id:'soldier', name:'Soldado', type:'townsfolk', ability:'Sos inmune a los ataques nocturnos del Demonio.', notes:'El Demonio no puede matarte. Protección pasiva, no necesitás hacer nada.' },
+  { id:'mayor', name:'Alcalde', type:'townsfolk', ability:'Si solo quedan 3 jugadores vivos y ninguno es ejecutado, el pueblo gana. Si morís de noche, otro jugador podría morir en tu lugar.', notes:'La victoria del Alcalde requiere 3 vivos, fase de día, y que el pueblo decida no ejecutar.' },
+  // Forasteros
+  { id:'butler', name:'Mayordomo', type:'outsider', ability:'Cada noche elegís un jugador (tu Amo). Solo podés votar si tu Amo vota también (o sos el que nomina).', notes:'El Mayordomo debe elegir Amo cada noche. No puede votar antes que su Amo.' },
+  { id:'drunk', name:'Borracho', type:'outsider', ability:'No sabés que sos el Borracho. Creés ser un Aldeano pero tu habilidad no funciona. El Narrador te da info falsa.', notes:'Tratalo como ese Aldeano pero dá info incorrecta. Podés ser creativo pero no demasiado obvio.' },
+  { id:'recluse', name:'Recluso', type:'outsider', ability:'Podés registrar como Malvado o como un rol Esbirro/Demonio, incluso si estás muerto.', notes:'Opcional. Podés hacer que el Adivina te marque como Demonio, o el Investigador te muestre como Esbirro.' },
+  { id:'saint', name:'Santo', type:'outsider', ability:'Si sos ejecutado, el pueblo pierde.', notes:'¡Cuidado! Si el pueblo lo ejecuta, el Mal gana. El Narrador no revela el rol hasta después de la ejecución.' },
+  // Esbirros
+  { id:'poisoner', name:'Envenenador', type:'minion', ability:'Cada noche elegís un jugador: su habilidad no funciona hasta la próxima noche del Envenenador.', notes:'Primera noche y todas las noches. El jugador envenenado recibe info incorrecta o su habilidad falla.' },
+  { id:'spy', name:'Espía', type:'minion', ability:'Cada noche ves el Grimorio completo. Podés registrar como Bueno y como un rol Aldeano/Forastero.', notes:'Mostrás el Grimorio al Espía cada noche. Podés hacer que registre como Bueno en roles de info.' },
+  { id:'scarlet-woman', name:'Dama Escarlata', type:'minion', ability:'Si hay 5+ jugadores vivos y el Demonio muere, te convertís en el Demonio.', notes:'Automático. La jugadora se convierte en Diablillo al morir el Diablillo con 5+ vivos. Informale en privado.' },
+  { id:'baron', name:'Barón', type:'minion', ability:'Al inicio hay 2 Forasteros extra. (El setup cambia: +2 Forasteros, -2 Aldeanos).', notes:'Modifica el setup inicial. Con el Barón, usás la fila de distribución de Forasteros+2.' },
+  // Demonio
+  { id:'imp', name:'Diablillo', type:'demon', ability:'Cada noche elegís un jugador: muere. Si te matás a vos mismo, un Esbirro vivo se convierte en Diablillo.', notes:'Acción principal del Demonio. Si elige un jugador protegido por el Monje, no muere. Si se elige a sí mismo, el Esbirro elegido al azar se convierte en Diablillo.' },
+];
+
+const NIGHT_ORDER_FIRST = [
+  { role: 'Esbirros', action: 'Se reconocen entre sí, ven al Diablillo', type:'minion' },
+  { role: 'Diablillo', action: 'Ve a sus Esbirros, recibe 3 bluffs', type:'demon' },
+  { role: 'Envenenador', action: 'Elige a quién envenenar', type:'minion' },
+  { role: 'Lavandera', action: 'Recibe info de Aldeano', type:'townsfolk' },
+  { role: 'Bibliotecario', action: 'Recibe info de Forastero', type:'townsfolk' },
+  { role: 'Investigador', action: 'Recibe info de Esbirro', type:'townsfolk' },
+  { role: 'Cocinero', action: 'Recibe número de pares Malvados', type:'townsfolk' },
+  { role: 'Empático', action: 'Recibe número de vecinos Malvados', type:'townsfolk' },
+  { role: 'Adivina', action: 'Elige 2 jugadores, recibe Sí/No', type:'townsfolk' },
+  { role: 'Mayordomo', action: 'Elige a su Amo', type:'outsider' },
+  { role: 'Espía', action: 'Ve el Grimorio', type:'minion' },
+];
+
+const NIGHT_ORDER_OTHER = [
+  { role: 'Envenenador', action: 'Elige a quién envenenar', type:'minion' },
+  { role: 'Monje', action: 'Elige a quién proteger', type:'townsfolk' },
+  { role: 'Dama Escarlata', action: '(Solo si el Diablillo murió)', type:'minion' },
+  { role: 'Diablillo', action: 'Elige víctima o se suicida', type:'demon' },
+  { role: 'Maestro de Cuervos', action: '(Solo si murió esta noche)', type:'townsfolk' },
+  { role: 'Sepulturero', action: 'Recibe rol del ejecutado ayer', type:'townsfolk' },
+  { role: 'Empático', action: 'Recibe número de vecinos Malvados', type:'townsfolk' },
+  { role: 'Adivina', action: 'Elige 2 jugadores, recibe Sí/No', type:'townsfolk' },
+  { role: 'Mayordomo', action: 'Elige a su Amo', type:'outsider' },
+  { role: 'Espía', action: 'Ve el Grimorio', type:'minion' },
+];
+
+const DECISIONS = {
+  'prep': {
+    title: '📋 Preparación Previa — Antes de empezar',
+    steps: [
+      { text: '<strong>Identificar al Borracho</strong> *(si está en juego)*: el Borracho no sabe que lo es. Anotá qué rol de Aldeano cree tener. Preparate para darle información falsa pero creíble durante toda la partida cuando llegue su turno.' },
+      { text: '<strong>Decidir cómo registra el Recluso</strong> *(si está en juego)*: el Recluso puede registrar como Malvado o como Bueno ante cada habilidad que lo detecte. Pensá de antemano cómo va a registrar ante la Adivina, el Investigador, el Cocinero y el Empático, y sé consistente.' },
+      { text: '<strong>Elegir la Cortina de Humo de la Adivina</strong> *(si la Adivina está en juego)*: elegí un jugador Bueno que siempre va a registrar como "Sí" ante la Adivina, aunque no sea el Diablillo. Anotalo. No puede cambiar durante la partida y el jugador no sabe que fue elegido.' },
+      { text: '<strong>Preparar la información de la Lavandera</strong> *(si está en juego)*: decidí qué 2 jugadores vas a mostrarle y qué ficha de Aldeano. Uno de los dos DEBE ser ese Aldeano real.' },
+      { text: '<strong>Preparar la información del Bibliotecario</strong> *(si está en juego)*: igual que la Lavandera pero con un Forastero. Si no hay Forasteros en juego, preparás la respuesta especial: mostrás 2 jugadores + señal de "ninguno es Forastero".' },
+      { text: '<strong>Preparar la información del Investigador</strong> *(si está en juego)*: igual, pero con un Esbirro. Uno de los 2 jugadores que mostrás debe ser ese Esbirro real.' },
+      { text: '<strong>Contar los pares malvados para el Cocinero</strong> *(si está en juego)*: contá cuántos pares de jugadores Malvados hay en total en la partida (sin importar dónde estén sentados). Recordá que el Recluso puede contar como Malvado si así lo decidiste.' },
+      { text: '<strong>Identificar los vecinos del Empático</strong> *(si está en juego)*: mirá quiénes son los dos vecinos vivos del Empático en el círculo y contá cuántos son Malvados. Tené ese número listo.' },
+      { text: '<strong>Preparar los 3 bluffs del Diablillo</strong>: elegí 3 roles de Aldeanos o Forasteros que no estén en juego. Son las identidades que el Diablillo puede fingir. Idealmente elegís roles que no contradigan demasiado la información que el pueblo ya va a recibir esa noche.' },
+      { text: '<strong>Verificar el setup con el Barón</strong> *(si está en juego)*: confirmá que la distribución de roles tenga +2 Forasteros y -2 Aldeanos respecto a la tabla base. Si usaste la asignación automática de la app, esto ya está contemplado.' },
+      { text: '<strong>Completar el Grimorio</strong>: revisá que todos los jugadores tengan rol asignado y que la distribución sea correcta. Es tu documento central durante toda la partida.' },
+    ],
+    note: 'Hacé este checklist en silencio antes de sentar a los jugadores. Una vez que empieza la noche, no podés cambiar las decisiones tomadas.'
+  },
+  'first-night': {
+    title: '🌙 Primera Noche — Paso a paso',
+    steps: [
+      { text: 'Todos cierran los ojos. Anunciá: <strong>"Todos duermen."</strong>' },
+      { text: '<strong>Esbirros</strong>: Abrí ojos de los Esbirros → se reconocen entre sí → ven quién es el Diablillo → duermen.' },
+      { text: '<strong>Diablillo</strong>: Abrí ojos del Diablillo → le mostrás los Esbirros → le das 3 bluffs (roles de Aldeanos no usados) → duerme.' },
+      { text: '<strong>Envenenador</strong>: Despertá al Envenenador → señala a quién envenena → duerme.' },
+      { text: '<strong>Lavandera</strong>: Señalá 2 jugadores + mostrá ficha del Aldeano que hay entre ellos → duerme.' },
+      { text: '<strong>Bibliotecario</strong>: Igual que la Lavandera pero con Forastero.' },
+      { text: '<strong>Investigador</strong>: Señalá 2 jugadores + mostrá ficha del Esbirro que hay entre ellos → duerme.' },
+      { text: '<strong>Cocinero</strong>: Mostrá con dedos cuántos pares de Malvados hay en total → duerme.' },
+      { text: '<strong>Empático</strong>: Mostrá con dedos cuántos vecinos vivos son Malvados → duerme.' },
+      { text: '<strong>Adivina</strong>: Señala 2 jugadores → hacés sí (pulgar arriba) o no (pulgar abajo) → duerme.' },
+      { text: '<strong>Mayordomo</strong>: Señala a su Amo → duerme.' },
+      { text: '<strong>Espía</strong> (si existe): Mostrá el Grimorio → duerme.' },
+      { text: 'Todos abren los ojos. <strong>"El sol sale."</strong> Comenzá el día 1.' },
+    ],
+    note: 'El Diablillo NO actúa la primera noche (no elige víctima). El orden dentro de cada grupo es flexible.'
+  },
+  'night': {
+    title: '🌑 Noche Normal — Paso a paso',
+    steps: [
+      { text: 'Anunciá el número de muertos de la noche anterior al amanecer.' },
+      { text: '<strong>Envenenador</strong>: elige nueva víctima (o la misma).' },
+      { text: '<strong>Monje</strong>: elige a quién proteger esta noche.' },
+      { text: '<strong>Dama Escarlata</strong>: (automático, solo si el Diablillo murió con 5+ vivos).' },
+      { text: '<strong>Diablillo</strong>: elige víctima. Si elige a alguien protegido por el Monje, mostrá "thumbs up" (la muerte no ocurre). Si se elige a sí mismo → muere y un Esbirro vivo se convierte en Diablillo.' },
+      { text: '<strong>Maestro de Cuervos</strong>: solo si murió esta noche → elige un jugador → le mostrás su rol.' },
+      { text: '<strong>Sepulturero</strong>: le mostrás el rol del ejecutado el día anterior.' },
+      { text: '<strong>Empático</strong>: actualiza conteo de vecinos Malvados.' },
+      { text: '<strong>Adivina</strong>: elige 2 jugadores, recibí respuesta.' },
+      { text: '<strong>Mayordomo</strong>: elige nuevo Amo.' },
+      { text: '<strong>Espía</strong>: ve el Grimorio.' },
+      { text: 'Amanece. Anunciá quién murió (o "nadie murió esta noche").' },
+    ],
+    note: 'Los jugadores muertos no participan de las acciones nocturnas (excepto el Maestro de Cuervos si muere esa noche).'
+  },
+  'instructions': {
+    title: '📜 Preparación de la partida',
+    steps: [
+      { text: '<strong>1. Reuní a tus jugadores:</strong> Tomá una silla por jugador y colocalas una frente a la otra, formando un círculo o un cuadrado, de modo que los jugadores se sienten en el sentido de las agujas del reloj o en sentido contrario. Como Narrador, tendrás que poder entrar y salir del círculo con frecuencia, así que dejá un espacio entre dos sillas. El centro de este espacio deberá estar casi vacío, sin mesas ni obstáculos en el suelo con los que se pueda tropezar.' },
+      { text: '<strong>2. Prepará el Grimorio:</strong> Enganchá el Grimorio fijando los dos clips metálicos lo más cerca posible de las esquinas superior e inferior de la caja de juego, creando un recipiente resistente parecido a un libro. Desplegá y montá el soporte de dos piezas del Grimorio y colocalo donde los jugadores que paseen no vean accidentalmente su contenido. Reuní los suministros de todas las fichas de información, de Noche y de Mortaja en el Grimorio (se recomienda la esquina inferior izquierda del lado derecho).' },
+      { text: '<strong>3. Elegí una edición:</strong> Esta caja incluye tres ediciones: Trouble Brewing, Bad Moon Rising y Sects & Violets. Elegí una para jugar. Destapá y añadí la caja de la edición a la parte inferior izquierda del Grimorio, para poder acceder fácilmente a las fichas de Personaje y de recordatorio. Añadí la Hoja de Noche de esa edición a la parte derecha del Grimorio. Se necesitan 5 o más jugadores para Trouble Brewing y 7 o más para las otras ediciones. Se recomienda empezar con Trouble Brewing y luego pasar a otras ediciones.' },
+      { text: '<strong>4. Prepará la Plaza del Pueblo:</strong> Colocá el tablero de Plaza del Pueblo en el suelo, en el centro de las sillas. Colocá una Ficha de Vida por jugador que coincida con su posición de asiento. Colocá un montón de fichas de voto en el centro de la plaza. Colocá la Hoja del Viajero parcialmente debajo de la Plaza del Pueblo, mostrando el número de Pueblerinos, Forasteros y Esbirros.' },
+      { text: '<strong>5. Leé las reglas a los nuevos jugadores:</strong> La Hoja de reglas describe todas las cosas importantes que un nuevo jugador necesitará saber para empezar a jugar. Simplemente leé el texto en voz alta al grupo, o dejá que quienes quieran lo lean en privado. Hacé demostraciones de las señales de mano, ya que algunos jugadores aprenden visualmente. Si querés, podés leer la parte sobre Nominaciones y Ejecuciones más tarde, cuando empiece la primera nominación. Hay un duplicado de la Hoja de reglas en el reverso de la Hoja del Viajero. Para ahorrar tiempo, podés pedirle a un jugador veterano que lea las reglas mientras vos preparás la partida.' },
+      { text: '<strong>6. Elegí los personajes en secreto:</strong> Sacá todas las fichas de Personaje Pueblerinos de la caja de la edición elegida y elegí el número apropiado para la cantidad de jugadores, como se indica en la Hoja de Preparación. Colocá esas fichas a la izquierda del Grimorio y devolvé las restantes a la caja. Luego hacé lo mismo con los Forasteros, los Esbirros y el Demonio. Hacelo en secreto: los jugadores no saben qué personajes hay en el juego. Si hay más de 15 jugadores, los que sobren pueden ofrecerse como Viajeros. Los Viajeros tienen un gran poder pero menos responsabilidad y suelen agilizar el juego. Entregales la Hoja del Viajero para que elijan su personaje. Para tu primera partida, no se recomienda incluir Viajeros o Fábulas.' },
+      { text: '<strong>Elección de personajes:</strong> Los personajes que elijas afectarán en gran medida el desarrollo de la partida. Elegí lo que creas que será divertido, lo que interactuará bien, o simplemente lo que te sientas capaz de manejar. Para una primera partida de 8 jugadores, se recomienda: Chef, Empático, Adivino, Enterrador, Virgen, Borracho (Investigador), Mujer Escarlata, Granuja. Esta preparación tiene mucha información para el equipo Bueno y es una gran manera de conseguir que la gente se comprometa.' },
+    ],
+    note: 'Se recomienda jugar una o dos partidas con 5-10 jugadores para familiarizarte con el juego antes de intentar partidas más grandes.'
+  },
+  'execution': {
+    title: '⚖️ Ejecuciones — Proceso',
+    steps: [
+      { text: 'Durante el día, cualquier jugador <strong>vivo</strong> puede nominar a otro jugador que aún no fue nominado hoy.' },
+      { text: 'El nominado puede defenderse brevemente.' },
+      { text: 'Se vota a mano alzada: <strong>"¿Quién vota para ejecutar a [nombre]?"</strong>' },
+      { text: 'Si los votos alcanzan la <strong>mayoría</strong> (mitad de vivos redondeado hacia arriba), el jugador queda "en el patíbulo".' },
+      { text: 'Continuá con más nominaciones. El jugador con más votos (que alcanzó la mayoría) es ejecutado al final del día.' },
+      { text: 'Si hay empate en cantidad de votos (ambos superando la mayoría), <strong>nadie es ejecutado</strong>.' },
+      { text: 'Solo se ejecuta <strong>un jugador por día</strong>. Al morir, revelás su rol — con estas excepciones:<br><br>• <strong>Santo:</strong> el rol se revela luego de la ejecución. En ese momento el Mal gana automáticamente.<br>• <strong>Borracho:</strong> revelás el rol de Aldeano que <em>cree</em> tener, no que era el Borracho. El pueblo no se entera todavía.<br>• <strong>Recluso:</strong> podés revelar cualquier rol de Esbirro o Demonio en lugar de su rol real.<br>• <strong>Espía:</strong> podés revelar cualquier rol de Aldeano o Forastero en lugar de Espía.' },
+    ],
+    note: 'Los muertos pueden votar pero solo una vez total (con su "voto fantasma"). Los muertos NO pueden nominar.'
+  },
+  'drunk': {
+    title: '🍺 Borracho y Envenenado',
+    steps: [
+      { text: 'El jugador con rol <strong>Borracho</strong> cree que tiene un rol de Aldeano, pero su habilidad no funciona.' },
+      { text: 'Cuando el Borracho "usa" su habilidad, vos le dás info <strong>incorrecta o sin sentido</strong> (pero convincente).' },
+      { text: 'El <strong>Envenenador</strong> envenena a alguien cada noche. Ese jugador recibe info falsa esa noche y el día siguiente.' },
+      { text: 'Si el Empático está envenenado, podés darle cualquier número (0, 1 o 2) sin importar la realidad.' },
+      { text: 'Si el Adivina está envenenado, podés dar Sí o No sin importar los jugadores elegidos.' },
+      { text: 'Si el Monje está envenenado, su protección no funciona esa noche.' },
+      { text: 'Sé consistente pero no demasiado obvio. El objetivo es hacer el juego desafiante, no frustrante.' },
+    ],
+    note: 'La intoxicación del Borracho es permanente. El veneno del Envenenador dura una ronda (hasta su próxima acción).'
+  },
+  'storyteller': {
+    title: '🎭 Poder del Narrador',
+    steps: [
+      { text: '<strong>Podés decidir</strong>: qué info exacta dar dentro de los límites del rol (ej: qué dos jugadores mostrar a la Lavandera).' },
+      { text: '<strong>Podés decidir</strong>: si el Recluso registra como Malvado o Bueno en cada habilidad que lo detecte.' },
+      { text: '<strong>Podés decidir</strong>: si el Adivina tiene un "cortina de humo" (Bueno que siempre dice Sí) y quién es.' },
+      { text: '<strong>NO podés</strong>: cambiar los roles asignados una vez que empezó la noche.' },
+      { text: '<strong>NO podés</strong>: inventar muertes o eventos que no corresponden a las habilidades.' },
+      { text: '<strong>NO podés</strong>: mentirle a un jugador sobre su propio rol (excepto al Borracho).' },
+      { text: 'Tu meta: hacer el juego <strong>justo y divertido</strong> para ambos bandos, no favorecer a ninguno.' },
+    ],
+    note: 'El Narrador tiene mucha discreción creativa. Usala para equilibrar, no para dominar.'
+  },
+  'win': {
+    title: '🏆 Condiciones de Victoria',
+    steps: [
+      { text: '<strong>El pueblo gana</strong> si el Demonio muere (ya sea por ejecución o por otra habilidad como el Justiciero).' },
+      { text: '<strong>El mal gana</strong> si al inicio de una fase de día solo quedan <strong>2 jugadores vivos</strong>.' },
+      { text: '<strong>El mal gana</strong> si el Santo es ejecutado.' },
+      { text: '<strong>El pueblo gana</strong> si el Alcalde está vivo, quedan 3 vivos y el pueblo decide no ejecutar a nadie ese día.' },
+      { text: 'Si el Diablillo se mata a sí mismo y hay un Esbirro vivo, ese Esbirro se convierte en Diablillo. <strong>El juego continúa.</strong>' },
+      { text: 'Si la Dama Escarlata está viva con 5+ jugadores y el Diablillo muere (por ejecución), ella se convierte en Diablillo. <strong>El juego continúa.</strong>' },
+      { text: 'Al terminar el juego, revelá todos los roles del Grimorio.' },
+    ],
+    note: 'Verificá las condiciones de victoria al inicio de CADA fase de día, antes de que empiece la discusión.'
+  },
+  'spy': {
+    title: '🔍 El Espía — Casos Especiales',
+    steps: [
+      { text: 'Cada noche, el Espía ve el <strong>Grimorio completo</strong>: todos los roles, estados y tokens.' },
+      { text: 'El Espía puede registrar como <strong>Bueno</strong> a ojos del Empático y el Cocinero (el Narrador decide).' },
+      { text: 'El Espía puede registrar como cualquier rol Aldeano/Forastero en habilidades como Lavandera, Bibliotecario, Investigador.' },
+      { text: 'Si el Adivina elige al Espía, podés decir "No" (registra como Bueno) o "Sí" (registra como Malvado). Vos elegís.' },
+      { text: 'Si el Sepulturero detecta al Espía ejecutado, podés mostrar cualquier rol Aldeano/Forastero.' },
+      { text: 'Sé consistente con las decisiones que tomés sobre el Espía durante toda la partida.' },
+    ],
+    note: 'El Espía es extremadamente poderoso por la info que ve. Compensá dando info útil al pueblo cuando sea posible.'
+  },
+  'investigator': {
+    title: '🔎 Roles de Información',
+    steps: [
+      { text: '<strong>Lavandera</strong>: elegís 2 jugadores. Uno DEBE ser el Aldeano que mostrás. El otro puede ser cualquiera.' },
+      { text: '<strong>Bibliotecario</strong>: igual pero con Forastero. Si no hay Forasteros, mostrás 2 jugadores y "ninguno es Forastero".' },
+      { text: '<strong>Investigador</strong>: igual pero con Esbirro. Siempre hay al menos un Esbirro, así que siempre podés dar info.' },
+      { text: '<strong>Cocinero</strong>: contás todos los pares posibles de jugadores Malvados en la partida (sin importar dónde estén sentados). El Recluso puede contar (o no).' },
+      { text: '<strong>Empático</strong>: contás vecinos vivos Malvados. El Recluso puede contar como Malvado si querés.' },
+      { text: '<strong>Adivina</strong>: si alguno de los 2 elegidos es el Diablillo → "Sí". También si uno es el "cortina de humo". Sino → "No".' },
+      { text: 'Todos estos roles reciben info la primera noche (excepto Sepulturero y Empático que repiten cada noche).' },
+    ],
+    note: 'Recordá que la info de un jugador intoxicado o envenenado puede ser falsa. Anotá quién está en ese estado.'
+  }
+};
+
+// =================== STATE ===================
+let state = {
+  players: [],
+  gameStarted: false,
+  demonBluffs: [],
+};
+
+const sectionOpen = { 'prep': false, 'first-night': false, 'night': false, 'day': false };
+
+// =================== ROLE DISTRIBUTION ===================
+function getRoleDist(n) {
+  // Official TB distribution
+  const dist = {
+    5:  { t:3, o:0, m:1, d:1 },
+    6:  { t:3, o:1, m:1, d:1 },
+    7:  { t:5, o:0, m:1, d:1 },
+    8:  { t:5, o:1, m:1, d:1 },
+    9:  { t:5, o:2, m:1, d:1 },
+    10: { t:7, o:0, m:2, d:1 },
+    11: { t:7, o:1, m:2, d:1 },
+    12: { t:7, o:2, m:2, d:1 },
+    13: { t:9, o:0, m:3, d:1 },
+    14: { t:9, o:1, m:3, d:1 },
+    15: { t:9, o:2, m:3, d:1 },
+  };
+  const base = dist[n];
+  if (!base) return null;
+  // Baron shifts +2 outsiders, -2 townsfolk
+  if (state.players.some(p => p.role === 'baron')) {
+    return { t: base.t - 2, o: base.o + 2, m: base.m, d: base.d };
+  }
+  return base;
+}
+
+// =================== DRAG & DROP ===================
+let dragSrcId = null;
+
+function initDragDrop() {
+  const list = document.getElementById('playerListSetup');
+  if (!list) return;
+
+  // Mouse drag
+  list.querySelectorAll('.player-chip').forEach(chip => {
+    chip.addEventListener('dragstart', e => {
+      dragSrcId = parseInt(chip.dataset.id);
+      chip.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+    });
+    chip.addEventListener('dragend', () => {
+      chip.classList.remove('dragging');
+      list.querySelectorAll('.player-chip').forEach(c => c.classList.remove('drag-over'));
+    });
+    chip.addEventListener('dragover', e => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      list.querySelectorAll('.player-chip').forEach(c => c.classList.remove('drag-over'));
+      chip.classList.add('drag-over');
+    });
+    chip.addEventListener('dragleave', () => chip.classList.remove('drag-over'));
+    chip.addEventListener('drop', e => {
+      e.preventDefault();
+      const targetId = parseInt(chip.dataset.id);
+      if (dragSrcId !== null && dragSrcId !== targetId) {
+        reorderPlayers(dragSrcId, targetId);
+      }
+    });
+  });
+
+  // Touch drag
+  let touchDragId = null;
+  let touchClone = null;
+  let lastOver = null;
+
+  list.querySelectorAll('.drag-handle').forEach(handle => {
+    handle.addEventListener('touchstart', e => {
+      const chip = handle.closest('.player-chip');
+      touchDragId = parseInt(chip.dataset.id);
+      chip.classList.add('dragging');
+
+      // Create visual clone
+      touchClone = chip.cloneNode(true);
+      touchClone.style.cssText = `position:fixed;pointer-events:none;z-index:999;opacity:0.85;width:${chip.offsetWidth}px;border:1px solid var(--gold-dim);border-radius:8px;background:var(--surface2);`;
+      document.body.appendChild(touchClone);
+    }, { passive: true });
+
+    handle.addEventListener('touchmove', e => {
+      if (!touchClone) return;
+      e.preventDefault();
+      const touch = e.touches[0];
+      touchClone.style.left = (touch.clientX - touchClone.offsetWidth / 2) + 'px';
+      touchClone.style.top  = (touch.clientY - 30) + 'px';
+
+      // Find chip under touch
+      touchClone.style.display = 'none';
+      const el = document.elementFromPoint(touch.clientX, touch.clientY);
+      touchClone.style.display = '';
+      const overChip = el ? el.closest('.player-chip') : null;
+      list.querySelectorAll('.player-chip').forEach(c => c.classList.remove('drag-over'));
+      if (overChip && overChip.dataset.id !== String(touchDragId)) {
+        overChip.classList.add('drag-over');
+        lastOver = parseInt(overChip.dataset.id);
+      } else {
+        lastOver = null;
+      }
+    }, { passive: false });
+
+    handle.addEventListener('touchend', () => {
+      if (touchClone) { touchClone.remove(); touchClone = null; }
+      list.querySelectorAll('.player-chip').forEach(c => {
+        c.classList.remove('dragging', 'drag-over');
+      });
+      if (touchDragId !== null && lastOver !== null && touchDragId !== lastOver) {
+        reorderPlayers(touchDragId, lastOver);
+      }
+      touchDragId = null; lastOver = null;
+    });
+  });
+}
+
+function reorderPlayers(srcId, targetId) {
+  const srcIdx = state.players.findIndex(p => p.id === srcId);
+  const tgtIdx = state.players.findIndex(p => p.id === targetId);
+  if (srcIdx === -1 || tgtIdx === -1) return;
+  const [moved] = state.players.splice(srcIdx, 1);
+  state.players.splice(tgtIdx, 0, moved);
+  renderSetup();
+}
+
+// =================== SETUP ===================
+function addPlayer() {
+  const inp = document.getElementById('playerNameInput');
+  const name = inp.value.trim();
+  if (!name) return;
+  if (state.players.length >= 15) { alert('Máximo 15 jugadores'); return; }
+  if (state.players.find(p => p.name.toLowerCase() === name.toLowerCase())) { alert('Ya existe ese nombre'); return; }
+  state.players.push({ id: Date.now(), name, role: null, dead: false, tokens: [], notes: '' });
+  inp.value = '';
+  inp.focus();
+  renderSetup();
+}
+
+function removePlayer(id) {
+  state.players = state.players.filter(p => p.id !== id);
+  renderSetup();
+}
+
+function renderOpenChecklists() {
+  ['prep','first-night','night','day'].forEach(key => {
+    if (sectionOpen[key]) renderChecklist(key);
+  });
+}
+
+function changePlayerRole(playerId, roleId) {
+  const player = state.players.find(p => p.id === playerId);
+  if (player) {
+    player.role = roleId || null;
+    renderSetup();
+    renderOpenChecklists();
+  }
+}
+
+function setPlayerMeta(playerId, key, value) {
+  const player = state.players.find(p => p.id === playerId);
+  if (player) {
+    player[key] = value;
+    renderOpenChecklists();
+  }
+}
+
+function togglePlayerToken(playerId, token) {
+  const player = state.players.find(p => p.id === playerId);
+  if (!player) return;
+  if (!player.tokens) player.tokens = [];
+  const idx = player.tokens.indexOf(token);
+  if (idx === -1) player.tokens.push(token);
+  else player.tokens.splice(idx, 1);
+  renderSetup();
+  renderOpenChecklists();
+}
+
+function renderSetup() {
+  const n = state.players.length;
+  document.getElementById('playerCount').textContent = n;
+
+  const list = document.getElementById('playerListSetup');
+  if (n === 0) {
+    list.innerHTML = '<div class="empty-state" style="padding:10px;font-size:11px;">Añadí jugadores →</div>';
+  } else {
+    const typeLabel = { townsfolk:'Aldeanos', outsider:'Forasteros', minion:'Esbirros', demon:'Demonio' };
+    const grouped = { townsfolk:[], outsider:[], minion:[], demon:[] };
+    TB_ROLES.forEach(r => grouped[r.type].push(r));
+    Object.keys(grouped).forEach(t => grouped[t].sort((a,b) => a.name.localeCompare(b.name,'es')));
+
+    const buildOptions = (selectedId) => {
+      const prefix = { townsfolk:'🟢', outsider:'🔵', minion:'🔴', demon:'🔴' };
+      let opts = `<option value="">— Sin rol —</option>`;
+      for (const type of ['townsfolk','outsider','minion','demon']) {
+        opts += `<optgroup label="— ${typeLabel[type]} —">`;
+        opts += grouped[type].map(r =>
+          `<option value="${r.id}" ${selectedId === r.id ? 'selected' : ''}>${prefix[type]} ${r.name}</option>`
+        ).join('');
+        opts += `</optgroup>`;
+      }
+      return opts;
+    };
+
+    const typeColor = { townsfolk:'#27ae60', outsider:'#2980b9', minion:'#e74c3c', demon:'#ff6b6b' };
+    const hasFortuneTeller = state.players.some(p => p.role === 'fortune-teller');
+    const hasPoisoner      = state.players.some(p => p.role === 'poisoner');
+
+    list.innerHTML = state.players.map(p => {
+      const role = p.role ? TB_ROLES.find(r => r.id === p.role) : null;
+      const color = role ? typeColor[role.type] : 'var(--text-dim)';
+      const smokeActive  = p.tokens && p.tokens.includes('smoke');
+      const poisonActive = p.tokens && p.tokens.includes('poisoned');
+      const isDrunk   = p.role === 'drunk';
+      const isRecluse = p.role === 'recluse';
+
+      const drunkBeliefSelect = isDrunk ? `<select onchange="setPlayerMeta(${p.id},'drunkBelief',this.value)"
+          style="background:var(--surface);border:1px solid rgba(243,156,18,0.5);border-radius:4px;color:rgba(243,156,18,0.9);padding:4px 7px;font-size:11px;font-family:'Lato',sans-serif;outline:none;width:100%;cursor:pointer">
+          <option value="">🍺 Cree que es... (Aldeano)</option>
+          ${grouped.townsfolk.map(r => `<option value="${r.id}" ${(p.drunkBelief||'') === r.id ? 'selected':''}>${r.name}</option>`).join('')}
+        </select>` : '';
+
+      const recluseSelect = isRecluse ? `<select onchange="setPlayerMeta(${p.id},'recluseAs',this.value)"
+          style="background:var(--surface);border:1px solid rgba(41,128,185,0.5);border-radius:4px;color:#2980b9;padding:4px 7px;font-size:11px;font-family:'Lato',sans-serif;outline:none;width:100%;cursor:pointer">
+          <option value="" ${(p.recluseAs||'') === '' ? 'selected':''}>💨 Figura como...</option>
+          <option value="outsider" ${(p.recluseAs||'') === 'outsider' ? 'selected':''}>🔵 Forastero</option>
+          <option value="minion"   ${(p.recluseAs||'') === 'minion'   ? 'selected':''}>🔴 Esbirro</option>
+          <option value="demon"    ${(p.recluseAs||'') === 'demon'    ? 'selected':''}>🔴 Demonio</option>
+        </select>` : '';
+
+      const smokeBtn  = hasFortuneTeller
+        ? `<button class="status-toggle ${smokeActive  ? 'active-smoke'  : ''}" onclick="event.stopPropagation();togglePlayerToken(${p.id},'smoke')"    title="Cortina de humo (Adivina)">💨</button>`
+        : '';
+      const poisonBtn = hasPoisoner
+        ? `<button class="status-toggle ${poisonActive ? 'active-poison' : ''}" onclick="event.stopPropagation();togglePlayerToken(${p.id},'poisoned')" title="Envenenado">🧪</button>`
+        : '';
+
+      return `<div class="player-chip" draggable="true" data-id="${p.id}" style="flex-direction:column;align-items:stretch;gap:6px;padding:8px 10px">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div style="display:flex;align-items:center;gap:4px">
+            <span class="drag-handle" title="Arrastrar para reordenar">⠿</span>
+            <span style="font-family:'Cinzel',serif;font-size:12px">${p.name}</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:4px">
+            ${smokeBtn}
+            ${poisonBtn}
+            <button onclick="event.stopPropagation();removePlayer(${p.id})" style="margin-left:2px;background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:15px;line-height:1;padding:0 2px">×</button>
+          </div>
+        </div>
+        <select onchange="changePlayerRole(${p.id}, this.value)"
+          style="background:var(--surface);border:1px solid ${role ? color : 'var(--border)'};border-radius:4px;color:${color};padding:4px 7px;font-size:11px;font-family:'Lato',sans-serif;outline:none;width:100%;cursor:pointer">
+          ${buildOptions(p.role)}
+        </select>
+        ${drunkBeliefSelect}
+        ${recluseSelect}
+      </div>`;
+    }).join('');
+
+    setTimeout(initDragDrop, 0);
+  }
+
+  // Distribution + validation
+  const dist = getRoleDist(n);
+  const distEl = document.getElementById('roleDist');
+  let validEl = document.getElementById('distValidation');
+  if (!validEl) {
+    validEl = document.createElement('div');
+    validEl.id = 'distValidation';
+    distEl.parentNode.insertBefore(validEl, distEl.nextSibling);
+  }
+
+  if (!dist) {
+    distEl.innerHTML = n < 5
+      ? '<div style="color:var(--text-dim);font-size:11px;font-style:italic">Mínimo 5 jugadores</div>'
+      : '<div style="color:var(--text-dim);font-size:11px;font-style:italic">Máximo 15 jugadores</div>';
+    validEl.innerHTML = '';
+    return;
+  }
+
+  const assigned = { townsfolk:0, outsider:0, minion:0, demon:0 };
+  state.players.forEach(p => {
+    const role = p.role ? TB_ROLES.find(r => r.id === p.role) : null;
+    if (role) assigned[role.type]++;
+  });
+
+  const anyAssigned = (assigned.townsfolk + assigned.outsider + assigned.minion + assigned.demon) > 0;
+
+  const rowHtml = (type, label, expected, actual) => {
+    let status = '';
+    if (anyAssigned) {
+      if (actual === expected) {
+        status = `<span style="color:#27ae60;font-size:11px">✓</span>`;
+      } else {
+        const diff = actual - expected;
+        status = `<span style="color:#e74c3c;font-size:10px;font-weight:700">${diff>0?'+':''}${diff}</span>`;
+      }
+    }
+    return `<div class="role-dist-row ${type}">
+      <span>${label}</span>
+      <div style="display:flex;align-items:center;gap:6px">
+        ${anyAssigned ? `<span style="color:var(--text-dim);font-size:11px">${actual}/</span>` : ''}
+        <span>${expected}</span>
+        ${status}
+      </div>
+    </div>`;
+  };
+
+  const hasBaron = state.players.some(p => p.role === 'baron');
+
+  // Baron note
+  let baronEl = document.getElementById('baronNote');
+  if (!baronEl) {
+    baronEl = document.createElement('div');
+    baronEl.id = 'baronNote';
+    distEl.parentNode.insertBefore(baronEl, distEl);
+  }
+  baronEl.innerHTML = hasBaron
+    ? `<div style="margin-bottom:8px;padding:6px 10px;background:rgba(192,57,43,0.08);border:1px solid rgba(192,57,43,0.4);border-radius:5px;font-size:11px;color:#e74c3c;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
+        <span>🃏 <strong>Barón en juego:</strong> reemplazá 2 Aldeanos por 2 Forasteros respecto a la tabla base.</span>
+        <button onclick="applyBaronSwap()" style="background:rgba(192,57,43,0.15);border:1px solid rgba(192,57,43,0.5);border-radius:4px;color:#e74c3c;font-size:10px;padding:3px 8px;cursor:pointer;white-space:nowrap;font-family:'Lato',sans-serif">🔄 Aplicar reemplazo</button>
+      </div>`
+    : '';
+
+  distEl.innerHTML =
+    rowHtml('townsfolk', 'Aldeanos',   dist.t, assigned.townsfolk) +
+    rowHtml('outsider',  'Forasteros', dist.o, assigned.outsider) +
+    rowHtml('minion',    'Esbirros',   dist.m, assigned.minion) +
+    rowHtml('demon',     'Demonio',    dist.d, assigned.demon);
+
+  if (!anyAssigned) {
+    validEl.innerHTML = '';
+  } else if (assigned.townsfolk===dist.t && assigned.outsider===dist.o && assigned.minion===dist.m && assigned.demon===dist.d) {
+    validEl.innerHTML = `<div style="margin-top:8px;padding:6px 10px;background:rgba(39,174,96,0.1);border:1px solid #27ae60;border-radius:5px;font-size:11px;color:#27ae60">✓ Distribución correcta</div>`;
+  } else {
+    const checks = [
+      { label:'Aldeanos',   exp:dist.t, act:assigned.townsfolk },
+      { label:'Forasteros', exp:dist.o, act:assigned.outsider },
+      { label:'Esbirros',   exp:dist.m, act:assigned.minion },
+      { label:'Demonio',    exp:dist.d, act:assigned.demon },
+    ];
+    const errors = checks.filter(c => c.act !== c.exp)
+      .map(c => { const d=c.act-c.exp; return `${c.label}: ${c.act}/${c.exp} (${d>0?'+':''}${d})`; });
+    validEl.innerHTML = `<div style="margin-top:8px;padding:6px 10px;background:rgba(192,57,43,0.1);border:1px solid #e74c3c;border-radius:5px;font-size:11px;color:#e74c3c">⚠️ ${errors.join(' · ')}</div>`;
+  }
+}
+
+function applyBaronSwap() {
+  // Find players with townsfolk roles
+  const townsfolkPlayers = state.players.filter(p => {
+    const role = TB_ROLES.find(role => role.id === p.role);
+    return role && role.type === 'townsfolk';
+  });
+  if (townsfolkPlayers.length < 2) {
+    alert('No hay suficientes Aldeanos asignados para reemplazar (necesitás al menos 2).');
+    return;
+  }
+  // Find outsider roles not yet in use
+  const usedRoleIds = state.players.map(p => p.role).filter(Boolean);
+  const availableOutsiders = TB_ROLES.filter(role => role.type === 'outsider' && !usedRoleIds.includes(role.id));
+  if (availableOutsiders.length < 2) {
+    alert('No hay suficientes roles de Forastero disponibles para asignar (ya están todos en uso).');
+    return;
+  }
+  // Pick 2 random townsfolk players and 2 random outsider roles
+  const toReplace = shuffle([...townsfolkPlayers]).slice(0, 2);
+  const newRoles   = shuffle([...availableOutsiders]).slice(0, 2);
+  toReplace[0].role = newRoles[0].id;
+  toReplace[1].role = newRoles[1].id;
+  renderSetup();
+}
+
+const shuffle = arr => [...arr].sort(() => Math.random() - 0.5);
+
+function randomizeRoles() {
+  const n = state.players.length;
+  const dist = getRoleDist(n);
+  if (!dist) { alert('Necesitás entre 5 y 15 jugadores'); return; }
+
+  const townsfolk = TB_ROLES.filter(r => r.type === 'townsfolk');
+  const outsiders = TB_ROLES.filter(r => r.type === 'outsider');
+  const minions = TB_ROLES.filter(r => r.type === 'minion');
+  const demons = TB_ROLES.filter(r => r.type === 'demon');
+
+  const selected = [
+    ...shuffle(townsfolk).slice(0, dist.t),
+    ...shuffle(outsiders).slice(0, dist.o),
+    ...shuffle(minions).slice(0, dist.m),
+    ...shuffle(demons).slice(0, dist.d),
+  ];
+  const shuffledPlayers = shuffle(state.players);
+  const shuffledRoles = shuffle(selected);
+
+  shuffledPlayers.forEach((p, i) => {
+    p.role = shuffledRoles[i].id;
+  });
+
+  // Demon bluffs
+  const usedRoleIds = selected.map(r => r.id);
+  const unusedGood = TB_ROLES.filter(r => (r.type==='townsfolk'||r.type==='outsider') && !usedRoleIds.includes(r.id));
+  state.demonBluffs = shuffle(unusedGood).slice(0, 3).map(b => b.id);
+
+  renderSetup();
+  // Re-render bluff step if checklist is open
+  if (sectionOpen['prep']) renderChecklist('prep');
+}
+
+function startGame() {
+  if (state.players.length < 5) { alert('Necesitás al menos 5 jugadores'); return; }
+  const unassigned = state.players.filter(p => !p.role);
+  if (unassigned.length > 0) {
+    if (!confirm(`${unassigned.length} jugador(es) sin rol. ¿Continuar igual?`)) return;
+  }
+  state.gameStarted = true;
+  showTab('game');
+}
+
+// =================== ROLES PANEL ===================
+let currentRoleFilter = 'all';
+function renderRoles() {
+  const list = document.getElementById('rolesList');
+  const filtered = currentRoleFilter === 'all' ? TB_ROLES : TB_ROLES.filter(r => r.type === currentRoleFilter);
+  const sorted = [...filtered].sort((a, b) => a.name.localeCompare(b.name, 'es'));
+  list.innerHTML = sorted.map(r =>
+    `<div class="role-card ${r.type}" id="rc-${r.id}" onclick="toggleRoleCard('${r.id}')">
+      <div class="role-header">
+        <span class="role-name">${r.name}</span>
+        <span class="role-type-tag">${{townsfolk:'Aldeano',outsider:'Forastero',minion:'Esbirro',demon:'Demonio'}[r.type]}</span>
+        <span class="expand-icon">▼</span>
+      </div>
+      <div class="role-ability">${r.ability}</div>
+      <div class="role-notes">💡 ${r.notes}</div>
+    </div>`
+  ).join('');
+}
+
+function toggleRoleCard(id) {
+  const el = document.getElementById('rc-' + id);
+  el.classList.toggle('expanded');
+}
+
+function filterRoles(type, btn) {
+  currentRoleFilter = type;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active','townsfolk','outsider','minion','demon','all'));
+  btn.classList.add('active', type);
+  renderRoles();
+}
+
+// =================== PLAYER MODAL ===================
+function openPlayerModal(id) {
+  if (!state.gameStarted) return;
+  const player = state.players.find(p => p.id === id);
+  if (!player) return;
+  state.currentModalPlayer = id;
+  document.getElementById('modalPlayerName').textContent = player.name;
+
+  const sel = document.getElementById('modalRoleSelect');
+  sel.innerHTML = `<option value="">Sin rol</option>` +
+    TB_ROLES.map(r => `<option value="${r.id}" ${player.role===r.id?'selected':''}>${r.name} (${r.type})</option>`).join('');
+
+  // Tokens
+  ['dead','drunk','poisoned','protected','ghost-vote'].forEach(t => {
+    const el = document.getElementById('tok-' + t);
+    if (el) el.classList.toggle('active', player.tokens && player.tokens.includes(t));
+  });
+
+  document.getElementById('modalNotes').value = player.notes || '';
+  document.getElementById('playerModal').classList.add('open');
+}
+
+function updateModalRole() {
+  // live preview could go here
+}
+
+function toggleToken(token) {
+  const player = state.players.find(p => p.id === state.currentModalPlayer);
+  if (!player) return;
+  if (!player.tokens) player.tokens = [];
+  const idx = player.tokens.indexOf(token);
+  if (idx === -1) player.tokens.push(token);
+  else player.tokens.splice(idx, 1);
+  const el = document.getElementById('tok-' + token);
+  if (el) el.classList.toggle('active', player.tokens.includes(token));
+}
+
+function killPlayer() {
+  const player = state.players.find(p => p.id === state.currentModalPlayer);
+  if (!player) return;
+  player.dead = !player.dead;
+  savePlayerModal();
+}
+
+function savePlayerModal() {
+  const player = state.players.find(p => p.id === state.currentModalPlayer);
+  if (!player) return;
+  player.role = document.getElementById('modalRoleSelect').value || null;
+  player.notes = document.getElementById('modalNotes').value;
+  closeModal('playerModal');
+  renderSetup();
+}
+
+// =================== DECISIONS ===================
+function openDecision(key) {
+  const d = DECISIONS[key];
+  if (!d) return;
+  document.getElementById('decisionTitle').textContent = d.title;
+  document.getElementById('decisionBody').innerHTML =
+    d.steps.map((s, i) =>
+      `<div class="decision-step">
+        <div class="step-num">${i+1}</div>
+        <div class="step-text">${s.text}</div>
+      </div>`
+    ).join('') +
+    (d.note ? `<div class="decision-note">📌 ${d.note}</div>` : '');
+  document.getElementById('decisionModal').classList.add('open');
+}
+
+function closeModal(id) {
+  document.getElementById(id).classList.remove('open');
+  state.currentModalPlayer = null;
+}
+
+// =================== CHECKLISTS ===================
+const CHECKLIST_STEPS = {
+  'prep': [
+    { text: 'Identificar al Borracho {player} y qué rol de Aldeano cree tener', type:'outsider', roleId:'drunk',
+      detail: 'El Borracho no sabe que lo es. Anotá mentalmente (o en papel) qué Aldeano cree ser. Cuando llegue su turno nocturno, lo tratás como ese Aldeano pero le das información incorrecta o sin sentido.' },
+    { text: 'Decidir cómo registra el Recluso {player} ante cada habilidad', type:'outsider', roleId:'recluse',
+      detail: 'El Recluso puede registrar como Malvado o Bueno según cada habilidad que lo detecte. Decidí de antemano: ¿la Adivina lo marca como Demonio? ¿El Investigador lo muestra como Esbirro? ¿El Cocinero lo cuenta como par Malvado? Sé consistente durante toda la partida.' },
+    { text: 'Elegir la Cortina de Humo de la Adivina {player}', type:'townsfolk', roleId:'fortune-teller',
+      detail: 'Elegí un jugador Bueno que siempre registrará como "Sí" ante la Adivina, aunque no sea el Diablillo. Anotalo. No puede cambiar durante la partida y el jugador elegido no sabe que fue seleccionado. Esto evita que la Adivina resuelva el juego demasiado fácil.' },
+    { text: 'Preparar info de la Lavandera {player}', type:'townsfolk', roleId:'washerwoman',
+      detail: 'Señalá 2 jugadores a la Lavandera y mostrale una carta de Aldeano. UNO de los dos jugadores señalados DEBE ser ese Aldeano. El otro jugador puede tener cualquier rol.' },
+    { text: 'Preparar info del Bibliotecario {player}', type:'townsfolk', roleId:'librarian',
+      detail: 'Igual que la Lavandera pero con un Forastero. Si no hay Forasteros en juego (ej: partida sin Barón y distribución sin Outsiders), mostrás 2 jugadores cualquiera y señalás que ninguno es Forastero.' },
+    { text: 'Preparar info del Investigador {player}', type:'townsfolk', roleId:'investigator',
+      detail: 'Señalá 2 jugadores al Investigador y mostrale una carta de Esbirro. UNO de los dos jugadores señalados DEBE ser ese Esbirro. El otro jugador puede tener cualquier rol.' },
+    { text: 'Contar pares de Malvados para el Cocinero {player}', type:'townsfolk', roleId:'chef',
+      detail: 'Contá cuántos pares de jugadores Malvados hay en total (sin importar dónde estén sentados). Por ejemplo, con 3 Malvados hay 3 pares posibles. Con 2 Malvados hay 1 par. Con 4 Malvados hay 6 pares. Recordá que el Recluso puede contar como Malvado si así lo decidiste.' },
+    { text: 'Identificar vecinos del Empático {player} y contar Malvados', type:'townsfolk', roleId:'empath',
+      detail: 'Mirá quiénes son los dos vecinos inmediatos (izquierda y derecha) del Empático en el círculo. Contá cuántos de esos dos son Malvados. Tené ese número listo. El Borracho cuenta como Bueno aunque sea Forastero.' },
+    { text: 'Elegir 3 bluffs para el Diablillo {player}', type:'demon', roleId:'imp', bluffStep: true,
+      detail: 'Elegí 3 roles de Aldeanos o Forasteros que NO estén en juego esta partida. Son las identidades que el Diablillo puede usar para bluffear sin ser contradicho por las fichas del Grimorio. Idealmente no elijas roles cuya ausencia sea muy obvia (ej: si el Cocinero ya reveló pares, no dar un bluff de Cocinero).' },
+    { text: 'Verificar setup del Barón {player}: +2 Forasteros, -2 Aldeanos', type:'minion', roleId:'baron',
+      detail: 'Si el Barón está en juego, la distribución debe tener 2 Forasteros más y 2 Aldeanos menos respecto a la tabla estándar. Verificá que los roles asignados reflejen esto antes de empezar.' },
+    { text: 'Revisar el Grimorio final', type:'townsfolk', roleId:null,
+      detail: 'Confirmá que todos los jugadores tienen rol asignado, que la distribución de tipos es correcta, y que tenés anotada toda la información que preparaste: Cortina de Humo, Borracho, Recluso, bluffs del Diablillo. Es tu documento central durante toda la partida.' },
+  ],
+  'first-night': [
+    { text: 'Todos cierran los ojos — "Todos duermen"', type:'townsfolk', roleId:null,
+      detail: 'Pedile a todos que cierren los ojos y bajen la cabeza. Esperá a que haya silencio antes de continuar.' },
+    { text: 'Esbirros: se despiertan, se reconocen, ven al Diablillo → duermen', type:'minion', roleId:null,
+      detail: 'Pedí que abran los ojos solo los Esbirros. Se miran entre sí para reconocerse. Señalás quién es el Diablillo. Luego duermen.' },
+    { text: 'Diablillo {player}: se despierta, ve a sus Esbirros, recibe 3 bluffs → duerme', type:'demon', roleId:'imp',
+      detail: 'El Diablillo abre los ojos. Le señalás quiénes son sus Esbirros. Luego le mostrás (en papel o con fichas) los 3 roles de bluff que preparaste. Duerme.' },
+    { text: 'Envenenador {player}: señala a quién envenena → duerme', type:'minion', roleId:'poisoner',
+      detail: 'El Envenenador despierta y señala a un jugador. Ese jugador queda envenenado: su habilidad no funcionará esta noche ni mañana. Anotalo. El Envenenador duerme.' },
+    { text: 'Lavandera {player}: recibe 2 jugadores + ficha del Aldeano → duerme', type:'townsfolk', roleId:'washerwoman',
+      detail: 'Señalá 2 jugadores a la Lavandera y mostrale una carta de Aldeano. UNO de los dos jugadores señalados DEBE ser ese Aldeano. El otro jugador puede tener cualquier rol. Duerme.' },
+    { text: 'Bibliotecario {player}: recibe 2 jugadores + ficha del Forastero → duerme', type:'townsfolk', roleId:'librarian',
+      detail: 'Igual que la Lavandera pero con un Forastero. Si no hay Forasteros, señalás 2 jugadores y hacés un gesto de "ninguno" (cabeza negando o manos cruzadas). Duerme.' },
+    { text: 'Investigador {player}: recibe 2 jugadores + ficha del Esbirro → duerme', type:'townsfolk', roleId:'investigator',
+      detail: 'Señalá 2 jugadores al Investigador y mostrale una carta de Esbirro. UNO de los dos jugadores señalados DEBE ser ese Esbirro. El otro jugador puede tener cualquier rol. Duerme.' },
+    { text: 'Cocinero {player}: recibe número de pares Malvados → duerme', type:'townsfolk', roleId:'chef',
+      detail: 'Mostrás con los dedos el número de pares de Malvados que calculaste. El número puede ser 0. Duerme.' },
+    { text: 'Empático {player}: recibe número de vecinos Malvados → duerme', type:'townsfolk', roleId:'empath',
+      detail: 'Mostrás con los dedos 0, 1 o 2: la cantidad de vecinos inmediatos del Empático que son Malvados. Duerme.' },
+    { text: 'Adivina {player}: señala 2 jugadores → recibe Sí/No → duerme', type:'townsfolk', roleId:'fortune-teller',
+      detail: 'La Adivina señala 2 jugadores. Si alguno es el Diablillo, o alguno es la Cortina de Humo, respondés con pulgar arriba (Sí). De lo contrario, pulgar abajo (No). Duerme.' },
+    { text: 'Mayordomo {player}: señala a su Amo → duerme', type:'outsider', roleId:'butler',
+      detail: 'El Mayordomo señala a un jugador que será su Amo esta ronda. Solo podrá votar si su Amo vota primero. Duerme.' },
+    { text: 'Espía {player}: ve el Grimorio completo → duerme', type:'minion', roleId:'spy',
+      detail: 'Mostrás el Grimorio al Espía: todos los roles, estados y tokens de todos los jugadores. Duerme.' },
+    { text: 'Todos abren los ojos — "El sol sale" — Comienza el Día 1', type:'townsfolk', roleId:null,
+      detail: 'Anunciá el amanecer. Informá si hubo muertos durante la noche (en la primera noche generalmente no hay). Comenzá la fase de discusión del Día 1.' },
+  ],
+  'night': [
+    { text: 'Todos cierran los ojos — anunciá los muertos de anoche', type:'townsfolk', roleId:null,
+      detail: 'Pedí silencio y que todos cierren los ojos. Antes de empezar las acciones, anunciá en voz alta quiénes murieron durante la noche anterior (si los hay).' },
+    { text: 'Envenenador {player}: señala a quién envenena → duerme', type:'minion', roleId:'poisoner',
+      detail: 'El Envenenador despierta y señala a un jugador. Puede repetir el mismo de la noche anterior o cambiar. Ese jugador queda envenenado hasta la próxima acción del Envenenador. Anotalo.' },
+    { text: 'Monje {player}: señala a quién protege → duerme', type:'townsfolk', roleId:'monk',
+      detail: 'El Monje señala a un jugador (no puede elegirse a sí mismo). Si el Diablillo elige esa misma víctima esta noche, la muerte no ocurre. Anotá a quién protege.' },
+    { text: 'Dama Escarlata {player}: (automático) si el Diablillo murió con 5+ vivos', type:'minion', roleId:'scarlet-woman',
+      detail: 'Este paso es automático, no requiere acción. Si el Diablillo murió (por ejecución) mientras había 5 o más jugadores vivos, la Dama Escarlata se convierte en el nuevo Diablillo. Informale en privado.' },
+    { text: 'Diablillo {player}: señala a su víctima → duerme', type:'demon', roleId:'imp',
+      detail: 'El Diablillo señala a un jugador para matar. Si ese jugador está protegido por el Monje, hacés thumbs up y la muerte no ocurre. Si el Diablillo se señala a sí mismo, muere y un Esbirro vivo elegido al azar se convierte en el nuevo Diablillo.' },
+    { text: 'Maestro de Cuervos {player}: solo si murió esta noche → elige un jugador → recibe su rol', type:'townsfolk', roleId:'ravenkeeper',
+      detail: 'Este paso solo ocurre si el Maestro de Cuervos fue la víctima del Diablillo esta noche. Despertalo, señala a un jugador, y mostrále la ficha del rol real de ese jugador.' },
+    { text: 'Sepulturero {player}: recibe el rol del ejecutado ayer → duerme', type:'townsfolk', roleId:'undertaker',
+      detail: 'Si hubo una ejecución ayer, el Sepulturero despierta y le mostrás la ficha del rol real del jugador ejecutado. Si no hubo ejecución, no lo despertás.' },
+    { text: 'Empático {player}: recibe número de vecinos Malvados actualizado → duerme', type:'townsfolk', roleId:'empath',
+      detail: 'Contás nuevamente los vecinos vivos inmediatos del Empático y cuántos son Malvados. El conteo puede cambiar si algún vecino murió. Mostrás el número con los dedos.' },
+    { text: 'Adivina {player}: señala 2 jugadores → recibe Sí/No → duerme', type:'townsfolk', roleId:'fortune-teller',
+      detail: 'La Adivina señala 2 jugadores. Si alguno es el Diablillo o la Cortina de Humo → pulgar arriba. Si ninguno → pulgar abajo. Funciona igual aunque alguno de los dos esté muerto.' },
+    { text: 'Mayordomo {player}: señala a su nuevo Amo → duerme', type:'outsider', roleId:'butler',
+      detail: 'El Mayordomo elige un nuevo Amo para el día siguiente. Puede repetir el mismo o cambiarlo.' },
+    { text: 'Espía {player}: ve el Grimorio completo → duerme', type:'minion', roleId:'spy',
+      detail: 'Mostrás el Grimorio actualizado al Espía: roles, estados (muerto/vivo, envenenado, etc.) de todos los jugadores.' },
+    { text: 'Todos abren los ojos — anunciá quién murió esta noche', type:'townsfolk', roleId:null,
+      detail: 'Anunciá el amanecer. Informá quién murió durante la noche (o "nadie murió esta noche"). Comenzá la fase de discusión del nuevo día.' },
+  ],
+  'day': [
+    { text: 'Anunciá quién murió durante la noche', type:'townsfolk', roleId:null,
+      detail: 'Nombrá en voz alta a los jugadores que murieron. Los jugadores muertos reciben un voto fantasma que pueden usar una sola vez durante el resto de la partida. Conservan su rol en secreto (a menos que sean ejecutados).' },
+    { text: 'Verificar condición de victoria del equipo Malo', type:'demon', roleId:null,
+      detail: 'Si quedan 2 jugadores vivos (incluyendo el Diablillo), el equipo Malo gana automáticamente. No se necesita nominación ni ejecución. Anuncialo y terminá la partida.' },
+    { text: 'Verificar condición de victoria del Alcalde {player}', type:'townsfolk', roleId:'mayor',
+      detail: 'Si quedan 3 jugadores vivos y no se ejecuta a nadie ese día, el Alcalde puede forzar la victoria del equipo Bueno. Esto es automático: si se cumple la condición y el Alcalde está vivo y sano, el equipo Bueno gana.' },
+    { text: 'Fase de debate libre', type:'townsfolk', roleId:null,
+      detail: 'Los jugadores hablan libremente, comparten información, acusan y debaten. No hay orden fijo. Como Narrador, no intervenís en el debate salvo para aclarar reglas. Este es el momento central del juego.' },
+    { text: 'Nominaciones', type:'townsfolk', roleId:null,
+      detail: 'Cualquier jugador vivo puede nominar a otro jugador vivo para ser ejecutado. Cada jugador solo puede nominar una vez por día, y cada jugador solo puede ser nominado una vez por día. Anunciás cada nominación en voz alta.' },
+    { text: 'Verificar habilidad de la Virgen {player} (primera nominación)', type:'townsfolk', roleId:'virgin',
+      detail: 'Si la Virgen es nominada por primera vez y quien la nomina es un Pueblerino, ese jugador Pueblerino es ejecutado inmediatamente. La nominación termina ahí para ese día. Solo aplica si la Virgen está sana (no envenenada).' },
+    { text: 'Votación', type:'townsfolk', roleId:null,
+      detail: 'Para cada nominación, los jugadores votan levantando la mano. El Narrador cuenta los votos. Se necesita más de la mitad de los jugadores vivos para ejecutar. En empate, nadie muere. El Mayordomo solo puede votar si su Amo vota primero.' },
+    { text: 'Verificar habilidad del Justiciero {player}', type:'townsfolk', roleId:'slayer',
+      detail: 'En cualquier momento del día, el Justiciero puede declarar públicamente que usa su habilidad y apunta a un jugador. Si ese jugador es el Diablillo, muere inmediatamente. Si no lo es, no pasa nada. Solo puede usarlo una vez en toda la partida.' },
+    { text: 'Ejecución', type:'townsfolk', roleId:null,
+      detail: 'Solo puede ejecutarse un jugador por día (el que recibió más votos suficientes). Anunciás su rol real en voz alta al ejecutarlo. Excepción: el Borracho revela el rol falso que cree tener; el Recluso y el Espía pueden revelar un rol alternativo a tu elección. Si el Santo es ejecutado, el equipo Malo gana inmediatamente.' },
+    { text: 'Verificar condición de victoria del equipo Bueno', type:'townsfolk', roleId:null,
+      detail: 'Si el Diablillo fue ejecutado, el equipo Bueno gana. Anuncialo y revelá los roles de todos. Si la Dama Escarlata entró en juego y el Diablillo original fue ejecutado, eso no cuenta: el nuevo Diablillo sigue vivo.' },
+    { text: 'Iniciar la siguiente noche', type:'townsfolk', roleId:null,
+      detail: 'Si nadie ganó, pedile a todos que cierren los ojos y comienza la siguiente noche. Usá la sección "Noche Normal" del checklist.' },
+  ],
+};
+
+const checklistDone = { 'prep': [], 'first-night': [], 'night': [], 'day': [] };
+const nightDeceased = []; // índices de pasos de noche marcados como muertos
+
+function isRoleInGame(roleId) {
+  if (!roleId) return true;
+  const playersWithRoles = state.players.filter(p => p.role);
+  if (playersWithRoles.length === 0) return true;
+  // Rol real en juego
+  if (state.players.some(p => p.role === roleId)) return true;
+  // Rol que cree tener el Borracho también cuenta como "en juego"
+  if (state.players.some(p => p.role === 'drunk' && p.drunkBelief === roleId)) return true;
+  return false;
+}
+
+function renderChecklist(key) {
+  const steps = CHECKLIST_STEPS[key];
+  const done = checklistDone[key];
+  const colorMap = { townsfolk:'#27ae60', outsider:'#2980b9', minion:'#e74c3c', demon:'#ff6b6b' };
+  const el = document.getElementById('checklist-' + key);
+  if (!el) return;
+
+  el.innerHTML = steps.map((step, i) => {
+    const isDone = done.includes(i);
+    const inGame = isRoleInGame(step.roleId);
+    const isDeceased = (key === 'night' || key === 'day') && nightDeceased.includes(i);
+    // Grisar si el rol no está en juego (aplica a todas las secciones)
+    const grayed = !inGame || isDeceased;
+
+    let rowClass = 'night-step';
+    if (isDone) rowClass += ' done';
+
+    let nameStyle = `color:${colorMap[step.type]||'inherit'};font-family:'Lato',sans-serif;font-weight:${isDone?'300':'400'}`;
+    if (grayed) nameStyle += ';opacity:0.35';
+
+    const checkIcon = isDone
+      ? `<span style="color:#27ae60;font-size:13px;width:20px;text-align:center;flex-shrink:0">✓</span>`
+      : `<span style="color:var(--gold-dim);font-family:'Cinzel',serif;font-size:11px;width:20px;text-align:center;flex-shrink:0">${i+1}</span>`;
+
+    // 💀 botón: en noche normal Y en día, para pasos con roleId (salvo imp/scarlet-woman en noche)
+    const showDead = (key === 'night' && step.roleId && !['imp','scarlet-woman'].includes(step.roleId))
+                  || (key === 'day' && step.roleId);
+    const deadCheckbox = showDead
+      ? `<span title="Marcar jugador como muerto" onclick="event.stopPropagation();toggleNightDeceased(${i})"
+           style="font-size:13px;cursor:pointer;flex-shrink:0;opacity:${isDeceased?'1':'0.3'};transition:opacity 0.2s"
+           onmouseenter="this.style.opacity='1'" onmouseleave="this.style.opacity='${isDeceased?'1':'0.3'}'">💀</span>`
+      : `<span style="width:18px;flex-shrink:0"></span>`;
+
+    const detailBtn = step.detail
+      ? `<span onclick="event.stopPropagation();showStepDetail('${key}',${i})"
+           title="Ver detalle"
+           style="font-size:11px;cursor:pointer;color:var(--gold-dim);flex-shrink:0;padding:0 2px;transition:color 0.2s"
+           onmouseenter="this.style.color='var(--gold)'" onmouseleave="this.style.color='var(--gold-dim)'">＋</span>`
+      : '';
+
+    const bluffInline = step.bluffStep
+      ? (() => {
+          if (!state.demonBluffs || state.demonBluffs.length === 0)
+            return `<div style="margin-top:6px;font-size:10px;color:var(--text-dim);font-style:italic">Asigná roles al azar primero para ver los bluffs</div>`;
+          return `<div style="margin-top:6px;display:flex;gap:5px;flex-wrap:wrap">` +
+            state.demonBluffs.map(id => {
+              const r = TB_ROLES.find(r => r.id === id);
+              return r ? `<span style="background:rgba(255,107,107,0.12);border:1px solid rgba(255,107,107,0.35);border-radius:4px;padding:3px 8px;font-size:11px;color:#ff6b6b">${r.name}</span>` : '';
+            }).join('') + `</div>`;
+        })()
+      : '';
+
+    // Resolve {player} placeholder
+    let stepText = step.text;
+    if (step.roleId && step.text.includes('{player}')) {
+      const match = state.players.find(p => p.role === step.roleId);
+      // Check if a drunk player believes they are this role
+      const drunkMatch = state.players.find(p => p.role === 'drunk' && p.drunkBelief === step.roleId);
+      if (match) {
+        const isPoisoned = match.tokens && match.tokens.includes('poisoned');
+        const badges = isPoisoned ? `<span title="Envenenado" style="font-size:10px">🧪</span>` : '';
+        const tag = `<em style="font-style:italic;font-weight:300;color:var(--text-dim);font-size:0.92em">(${match.name})</em>${badges}`;
+        stepText = step.text.replace('{player}', tag);
+      } else if (drunkMatch) {
+        const tag = `<em style="font-style:italic;font-weight:300;color:var(--text-dim);font-size:0.92em">(${drunkMatch.name})</em><span title="Borracho" style="font-size:10px">🍺</span>`;
+        stepText = step.text.replace('{player}', tag);
+      } else {
+        stepText = step.text.replace('{player}', '');
+      }
+    }
+
+    return `<div class="${rowClass}" onclick="toggleChecklistStep('${key}',${i})" style="gap:8px;align-items:flex-start;flex-wrap:wrap">
+      <div style="display:flex;align-items:center;gap:8px;width:100%">
+        ${checkIcon}
+        <span style="${nameStyle};flex:1;line-height:1.4">${stepText}</span>
+        ${detailBtn}
+        ${deadCheckbox}
+      </div>
+      ${bluffInline}
+    </div>`;
+  }).join('');
+}
+
+function toggleChecklistStep(key, i) {
+  const done = checklistDone[key];
+  const idx = done.indexOf(i);
+  if (idx === -1) done.push(i);
+  else done.splice(idx, 1);
+  renderChecklist(key);
+}
+
+function toggleNightDeceased(i) {
+  const idx = nightDeceased.indexOf(i);
+  if (idx === -1) nightDeceased.push(i);
+  else nightDeceased.splice(idx, 1);
+  // Re-render whichever night/day section is open
+  if (sectionOpen['night']) renderChecklist('night');
+  if (sectionOpen['day']) renderChecklist('day');
+}
+
+function resetChecklist(key) {
+  checklistDone[key] = [];
+  if (key === 'night' || key === 'day') nightDeceased.length = 0;
+  if (sectionOpen[key]) renderChecklist(key);
+}
+
+// Step detail modal
+function showStepDetail(key, i) {
+  const step = CHECKLIST_STEPS[key][i];
+  if (!step || !step.detail) return;
+  document.getElementById('decisionTitle').textContent = step.text;
+  document.getElementById('decisionBody').innerHTML =
+    `<p style="font-size:13px;line-height:1.6;color:var(--text)">${step.detail}</p>`;
+  document.getElementById('decisionModal').classList.add('open');
+}
+
+// =================== COLLAPSIBLE SECTIONS ===================
+
+function toggleSection(key) {
+  sectionOpen[key] = !sectionOpen[key];
+  const body = document.getElementById('body-' + key);
+  const arrow = document.getElementById('arrow-' + key);
+  body.style.display = sectionOpen[key] ? 'block' : 'none';
+  arrow.classList.toggle('open', sectionOpen[key]);
+  if (sectionOpen[key]) renderChecklist(key);
+}
+
+// =================== TABS ===================
+function showTab(name) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  const tabs = ['setup','game','roles','decisions'];
+  const idx = tabs.indexOf(name);
+  document.querySelectorAll('.tab')[idx].classList.add('active');
+  if (name === 'roles') renderRoles();
+}
+
+// =================== INIT ===================
+renderSetup();
+renderRoles();
+</script>
+</body>
+</html>
