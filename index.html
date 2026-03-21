@@ -764,6 +764,14 @@
         </div>
         <br>
         <button class="btn gold" onclick="randomizeRoles()" style="width:100%;margin-bottom:6px">🎲 Asignar roles al azar</button>
+        <div id="bluffSelectorCard" style="display:none;margin-bottom:6px">
+          <div style="font-size:11px;color:#ff6b6b;margin-bottom:6px;font-weight:600">🃏 Bluffs del Diablillo</div>
+          <div style="display:flex;flex-direction:column;gap:5px">
+            <select id="bluff0" onchange="setBluff(0,this.value)" style="background:var(--surface);border:1px solid rgba(255,107,107,0.4);border-radius:4px;color:#ff6b6b;padding:4px 7px;font-size:11px;font-family:'Lato',sans-serif;outline:none;width:100%;cursor:pointer"></select>
+            <select id="bluff1" onchange="setBluff(1,this.value)" style="background:var(--surface);border:1px solid rgba(255,107,107,0.4);border-radius:4px;color:#ff6b6b;padding:4px 7px;font-size:11px;font-family:'Lato',sans-serif;outline:none;width:100%;cursor:pointer"></select>
+            <select id="bluff2" onchange="setBluff(2,this.value)" style="background:var(--surface);border:1px solid rgba(255,107,107,0.4);border-radius:4px;color:#ff6b6b;padding:4px 7px;font-size:11px;font-family:'Lato',sans-serif;outline:none;width:100%;cursor:pointer"></select>
+          </div>
+        </div>
         <button class="btn primary" onclick="startGame()" style="width:100%">▶ Iniciar Partida</button>
       </div>
     </div>
@@ -781,8 +789,8 @@
         </div>
         <button class="btn" style="padding:4px 10px;font-size:10px" onclick="event.stopPropagation();resetChecklist('prep')">↺</button>
       </div>
+      <p style="font-size:11px;color:var(--text-dim);margin:6px 0 0;">Hacé esto en silencio antes de sentar a los jugadores. Una vez que empieza la noche, no podés cambiar estas decisiones.</p>
       <div class="checklist-body" id="body-prep" style="display:none">
-        <p style="font-size:11px;color:var(--text-dim);margin-bottom:10px;margin-top:10px;">Hacé esto en silencio antes de sentar a los jugadores. Una vez que empieza la noche, no podés cambiar estas decisiones.</p>
         <div class="night-order" id="checklist-prep"></div>
       </div>
     </div>
@@ -796,24 +804,9 @@
         </div>
         <button class="btn" style="padding:4px 10px;font-size:10px" onclick="event.stopPropagation();resetChecklist('first-night')">↺</button>
       </div>
+      <p style="font-size:11px;color:var(--text-dim);margin:6px 0 0;">El Diablillo NO elige víctima esta noche.</p>
       <div class="checklist-body" id="body-first-night" style="display:none">
-        <p style="font-size:11px;color:var(--text-dim);margin-bottom:10px;margin-top:10px;">El Diablillo NO elige víctima esta noche.</p>
         <div class="night-order" id="checklist-first-night"></div>
-      </div>
-    </div>
-
-    <!-- Checklist: Noche Normal -->
-    <div class="card checklist-section" style="margin-bottom:8px">
-      <div class="checklist-header" onclick="toggleSection('night')">
-        <div style="display:flex;align-items:center;gap:8px">
-          <span class="section-arrow" id="arrow-night">▶</span>
-          <h3 style="margin:0">🌑 Noche Normal</h3>
-        </div>
-        <button class="btn" style="padding:4px 10px;font-size:10px" onclick="event.stopPropagation();resetChecklist('night')">↺</button>
-      </div>
-      <div class="checklist-body" id="body-night" style="display:none">
-        <p style="font-size:11px;color:var(--text-dim);margin-bottom:10px;margin-top:10px;">Usá esto a partir de la noche 2 en adelante.</p>
-        <div class="night-order" id="checklist-night"></div>
       </div>
     </div>
 
@@ -826,9 +819,24 @@
         </div>
         <button class="btn" style="padding:4px 10px;font-size:10px" onclick="event.stopPropagation();resetChecklist('day')">↺</button>
       </div>
+      <p style="font-size:11px;color:var(--text-dim);margin:6px 0 0;">Pasos principales de la fase diurna. Se repite cada día a partir del primero.</p>
       <div class="checklist-body" id="body-day" style="display:none">
-        <p style="font-size:11px;color:var(--text-dim);margin-bottom:10px;margin-top:10px;">Pasos principales de la fase diurna. Se repite cada día a partir del primero.</p>
         <div class="night-order" id="checklist-day"></div>
+      </div>
+    </div>
+
+    <!-- Checklist: Noche Normal -->
+    <div class="card checklist-section" style="margin-bottom:8px">
+      <div class="checklist-header" onclick="toggleSection('night')">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="section-arrow" id="arrow-night">▶</span>
+          <h3 style="margin:0">🌑 Noche Normal</h3>
+        </div>
+        <button class="btn" style="padding:4px 10px;font-size:10px" onclick="event.stopPropagation();resetChecklist('night')">↺</button>
+      </div>
+      <p style="font-size:11px;color:var(--text-dim);margin:6px 0 0;">Usá esto a partir de la noche 2 en adelante.</p>
+      <div class="checklist-body" id="body-night" style="display:none">
+        <div class="night-order" id="checklist-night"></div>
       </div>
     </div>
 
@@ -941,7 +949,7 @@ const TB_ROLES = [
   { id:'investigator', name:'Investigador', type:'townsfolk', ability:'Señalá 2 jugadores al Investigador y mostrale una carta de Esbirro. UNO de los dos jugadores señalados DEBE ser ese Esbirro. El otro jugador puede tener cualquier rol.', notes:'Primera noche. Siempre mostrás un Esbirro real entre los dos.' },
   { id:'chef', name:'Cocinero', type:'townsfolk', ability:'Sabés cuántos pares de jugadores malvados hay en la partida.', notes:'Primera noche. Contás todos los pares posibles de jugadores Malvados (sin importar dónde estén sentados).' },
   { id:'empath', name:'Empático', type:'townsfolk', ability:'Cada noche sabés cuántos de tus 2 vecinos vivos son Malvados.', notes:'Cada noche. Contás solo vecinos vivos. El Borracho siempre cuenta como Bueno.' },
-  { id:'fortune-teller', name:'Adivina', type:'townsfolk', ability:'Cada noche elegís 2 jugadores: sabés si alguno es el Demonio. Un Bueno puede registrar como "Sí" (Cortina de Humo).', notes:'Podés elegir un Bueno para que siempre dé "Sí" como cortina de humo. Elegilo al inicio y sé consistente.' },
+  { id:'fortune-teller', name:'Adivina', type:'townsfolk', ability:'Cada noche, elegís 2 jugadores y averiguás si al menos uno es un demonio. No descubrís cuál de ellos es un demonio, solo que uno lo es. Si ninguno lo es, descubrís esto en su lugar. Podés elegir jugadores vivos o muertos, o incluso a vos misma. Si elegís a un demonio muerto, recibís igualmente un asentimiento.', notes:'Podés elegir un Bueno para que siempre dé "Sí" como cortina de humo. Elegilo al inicio y sé consistente.' },
   { id:'undertaker', name:'Sepulturero', type:'townsfolk', ability:'Cada noche (después de la primera) sabés el rol del jugador ejecutado ayer.', notes:'Revelás el rol real del ejecutado, incluso si era Borracho.' },
   { id:'monk', name:'Monje', type:'townsfolk', ability:'Cada noche (menos la primera) elegís un jugador (no vos): el Demonio no puede matarlo esta noche.', notes:'Si el Demonio elige al protegido, el Monje los protege. Mostrás "thumbs up" al Demonio.' },
   { id:'ravenkeeper', name:'Maestro de Cuervos', type:'townsfolk', ability:'Si morís de noche, elegís un jugador y sabés su rol.', notes:'Solo se activa si muere de noche. Mostrás su rol real incluso si está Borracho.' },
@@ -1369,7 +1377,7 @@ function renderSetup() {
           <option value="demon"    ${(p.recluseAs||'') === 'demon'    ? 'selected':''}>🔴 Demonio</option>
         </select>` : '';
 
-      const smokeBtn  = hasFortuneTeller
+      const smokeBtn  = hasFortuneTeller && role && (role.type === 'townsfolk' || role.type === 'outsider') && p.role !== 'fortune-teller'
         ? `<button class="status-toggle ${smokeActive  ? 'active-smoke'  : ''}" onclick="event.stopPropagation();togglePlayerToken(${p.id},'smoke')"    title="Cortina de humo (Adivina)">💨</button>`
         : '';
       const poisonBtn = hasPoisoner
@@ -1399,6 +1407,8 @@ function renderSetup() {
 
     setTimeout(initDragDrop, 0);
   }
+
+  renderBluffSelectors();
 
   // Distribution + validation
   const dist = getRoleDist(n);
@@ -1483,6 +1493,55 @@ function renderSetup() {
       .map(c => { const d=c.act-c.exp; return `${c.label}: ${c.act}/${c.exp} (${d>0?'+':''}${d})`; });
     validEl.innerHTML = `<div style="margin-top:8px;padding:6px 10px;background:rgba(192,57,43,0.1);border:1px solid #e74c3c;border-radius:5px;font-size:11px;color:#e74c3c">⚠️ ${errors.join(' · ')}</div>`;
   }
+}
+
+function renderBluffSelectors() {
+  const card = document.getElementById('bluffSelectorCard');
+  if (!card) return;
+  const hasImp = state.players.some(p => p.role === 'imp');
+  card.style.display = hasImp ? 'block' : 'none';
+  if (!hasImp) return;
+
+  const usedRoleIds = state.players.map(p => p.role).filter(Boolean);
+  const eligible = TB_ROLES.filter(r => (r.type === 'townsfolk' || r.type === 'outsider') && !usedRoleIds.includes(r.id));
+  const eligibleTownsfolk = eligible.filter(r => r.type === 'townsfolk').sort((a,b) => a.name.localeCompare(b.name,'es'));
+  const eligibleOutsider  = eligible.filter(r => r.type === 'outsider').sort((a,b) => a.name.localeCompare(b.name,'es'));
+
+  [0, 1, 2].forEach(idx => {
+    const sel = document.getElementById('bluff' + idx);
+    if (!sel) return;
+    const currentVal = state.demonBluffs[idx] || '';
+    const otherBluffs = state.demonBluffs.filter((_, i) => i !== idx);
+
+    const buildGroup = (roles, prefix) =>
+      roles.filter(r => !otherBluffs.includes(r.id) || r.id === currentVal)
+           .map(r => `<option value="${r.id}" ${currentVal === r.id ? 'selected' : ''}>${prefix} ${r.name}</option>`)
+           .join('');
+
+    sel.innerHTML =
+      `<option value="">— Elegir bluff —</option>` +
+      (eligibleTownsfolk.some(r => !otherBluffs.includes(r.id) || r.id === currentVal)
+        ? `<optgroup label="— Aldeanos —">${buildGroup(eligibleTownsfolk, '🟢')}</optgroup>` : '') +
+      (eligibleOutsider.some(r => !otherBluffs.includes(r.id) || r.id === currentVal)
+        ? `<optgroup label="— Forasteros —">${buildGroup(eligibleOutsider, '🔵')}</optgroup>` : '');
+
+    // Color based on selected role type
+    const currentRole = TB_ROLES.find(r => r.id === currentVal);
+    sel.style.color = currentRole
+      ? (currentRole.type === 'townsfolk' ? '#27ae60' : '#2980b9')
+      : '#ff6b6b';
+    sel.style.borderColor = currentRole
+      ? (currentRole.type === 'townsfolk' ? 'rgba(39,174,96,0.4)' : 'rgba(41,128,185,0.4)')
+      : 'rgba(255,107,107,0.4)';
+  });
+}
+
+function setBluff(idx, roleId) {
+  if (!state.demonBluffs) state.demonBluffs = ['', '', ''];
+  while (state.demonBluffs.length < 3) state.demonBluffs.push('');
+  state.demonBluffs[idx] = roleId;
+  renderBluffSelectors();
+  renderOpenChecklists();
 }
 
 function applyBaronSwap() {
@@ -1664,21 +1723,21 @@ function closeModal(id) {
 const CHECKLIST_STEPS = {
   'prep': [
     { text: 'Identificar al Borracho {player} y qué rol de Aldeano cree tener', type:'outsider', roleId:'drunk',
-      detail: 'El Borracho no sabe que lo es. Anotá mentalmente (o en papel) qué Aldeano cree ser. Cuando llegue su turno nocturno, lo tratás como ese Aldeano pero le das información incorrecta o sin sentido.' },
+      detail: 'El jugador con rol de Borracho no sabe que es borracho. Asignale un rol de aldeano (podés ver el que está pre-asignado en la sección "JUGADORES") y tratalo como si tuviera ese rol, pero su habilidad no funciona: puede recibir info errónea (o no), a criterio del narrador, y si tuviera alguna habilidad esta no surte efecto.' },
     { text: 'Decidir cómo registra el Recluso {player} ante cada habilidad', type:'outsider', roleId:'recluse',
-      detail: 'El Recluso puede registrar como Malvado o Bueno según cada habilidad que lo detecte. Decidí de antemano: ¿la Adivina lo marca como Demonio? ¿El Investigador lo muestra como Esbirro? ¿El Cocinero lo cuenta como par Malvado? Sé consistente durante toda la partida.' },
+      detail: 'Cada vez que el Recluso sea objetivo de una habilidad que detecte o afecte las alineaciones de los personajes, elegí si el Recluso es detectado/afectado como BUENO o MALO (ESBIRRO o DEMONIO).' },
     { text: 'Elegir la Cortina de Humo de la Adivina {player}', type:'townsfolk', roleId:'fortune-teller',
-      detail: 'Elegí un jugador Bueno que siempre registrará como "Sí" ante la Adivina, aunque no sea el Diablillo. Anotalo. No puede cambiar durante la partida y el jugador elegido no sabe que fue seleccionado. Esto evita que la Adivina resuelva el juego demasiado fácil.' },
+      detail: 'Asigná una "Cortina de humo": en la sección "Jugadores" seleccioná el botón 💨 en un jugador BUENO. Cuando la Adivina pregunte si ese jugador es el Diablillo, le vas a decir que sí (aunque no lo sea). La cortina de humo evita que la Adivina resuelva el juego demasiado fácil. No puede cambiar durante la partida y el jugador elegido no sabe que fue seleccionado.' },
     { text: 'Preparar info de la Lavandera {player}', type:'townsfolk', roleId:'washerwoman',
-      detail: 'Señalá 2 jugadores a la Lavandera y mostrale una carta de Aldeano. UNO de los dos jugadores señalados DEBE ser ese Aldeano. El otro jugador puede tener cualquier rol.' },
+      detail: 'Señalá 2 jugadores a la Lavandera y señalale un símbolo de Aldeano en la hoja de ayuda. UNO de los dos jugadores señalados DEBE ser ese Aldeano. El otro jugador puede tener cualquier rol.' },
     { text: 'Preparar info del Bibliotecario {player}', type:'townsfolk', roleId:'librarian',
-      detail: 'Igual que la Lavandera pero con un Forastero. Si no hay Forasteros en juego (ej: partida sin Barón y distribución sin Outsiders), mostrás 2 jugadores cualquiera y señalás que ninguno es Forastero.' },
+      detail: 'Señalá 2 jugadores al Bibliotecario y señalale un símbolo de Forastero en la hoja de ayuda. UNO de los dos jugadores señalados DEBE ser ese Forastero. El otro jugador puede tener cualquier rol. Si no hay Forasteros, indicale que no hay Forasteros.' },
     { text: 'Preparar info del Investigador {player}', type:'townsfolk', roleId:'investigator',
-      detail: 'Señalá 2 jugadores al Investigador y mostrale una carta de Esbirro. UNO de los dos jugadores señalados DEBE ser ese Esbirro. El otro jugador puede tener cualquier rol.' },
-    { text: 'Contar pares de Malvados para el Cocinero {player}', type:'townsfolk', roleId:'chef',
-      detail: 'Contá cuántos pares de jugadores Malvados hay en total (sin importar dónde estén sentados). Por ejemplo, con 3 Malvados hay 3 pares posibles. Con 2 Malvados hay 1 par. Con 4 Malvados hay 6 pares. Recordá que el Recluso puede contar como Malvado si así lo decidiste.' },
-    { text: 'Identificar vecinos del Empático {player} y contar Malvados', type:'townsfolk', roleId:'empath',
-      detail: 'Mirá quiénes son los dos vecinos inmediatos (izquierda y derecha) del Empático en el círculo. Contá cuántos de esos dos son Malvados. Tené ese número listo. El Borracho cuenta como Bueno aunque sea Forastero.' },
+      detail: 'Señalá 2 jugadores al Investigador y señalale un símbolo de Esbirro en la hoja de ayuda. UNO de los dos jugadores señalados DEBE ser ese Esbirro. El otro jugador puede tener cualquier rol.' },
+    { text: 'Preparar info del Cocinero {player}', type:'townsfolk', roleId:'chef',
+      detail: 'El Cocinero sabe si hay jugadores Malos sentados uno al lado del otro. Contá cuántos pares de jugadores Malos hay sentados juntos. Una pareja está formada por dos jugadores, pero un jugador puede formar parte de dos parejas. Así, dos jugadores Malos sentados uno al lado del otro forman una pareja. Tres jugadores Malos sentados uno al lado del otro forman dos parejas. Cuatro jugadores Malos sentados uno al lado del otro forman tres parejas. Y así sucesivamente.' },
+    { text: 'Identificar vecinos del Empático {player}', type:'townsfolk', roleId:'empath',
+      detail: 'Mirá quiénes son los dos vecinos inmediatos (izquierda y derecha) del Empático en el círculo. Contá cuántos de esos dos son Malos.' },
     { text: 'Elegir 3 bluffs para el Diablillo {player}', type:'demon', roleId:'imp', bluffStep: true,
       detail: 'Elegí 3 roles de Aldeanos o Forasteros que NO estén en juego esta partida. Son las identidades que el Diablillo puede usar para bluffear sin ser contradicho por las fichas del Grimorio. Idealmente no elijas roles cuya ausencia sea muy obvia (ej: si el Cocinero ya reveló pares, no dar un bluff de Cocinero).' },
     { text: 'Verificar setup del Barón {player}: +2 Forasteros, -2 Aldeanos', type:'minion', roleId:'baron',
@@ -1691,22 +1750,22 @@ const CHECKLIST_STEPS = {
       detail: 'Pedile a todos que cierren los ojos y bajen la cabeza. Esperá a que haya silencio antes de continuar.' },
     { text: 'Esbirros: se despiertan, se reconocen, ven al Diablillo → duermen', type:'minion', roleId:null,
       detail: 'Pedí que abran los ojos solo los Esbirros. Se miran entre sí para reconocerse. Señalás quién es el Diablillo. Luego duermen.' },
-    { text: 'Diablillo {player}: se despierta, ve a sus Esbirros, recibe 3 bluffs → duerme', type:'demon', roleId:'imp',
+    { text: 'Diablillo {player}: se despierta, ve a sus Esbirros, recibe 3 bluffs → duerme', type:'demon', roleId:'imp', bluffStep: true,
       detail: 'El Diablillo abre los ojos. Le señalás quiénes son sus Esbirros. Luego le mostrás (en papel o con fichas) los 3 roles de bluff que preparaste. Duerme.' },
     { text: 'Envenenador {player}: señala a quién envenena → duerme', type:'minion', roleId:'poisoner',
       detail: 'El Envenenador despierta y señala a un jugador. Ese jugador queda envenenado: su habilidad no funcionará esta noche ni mañana. Anotalo. El Envenenador duerme.' },
-    { text: 'Lavandera {player}: recibe 2 jugadores + ficha del Aldeano → duerme', type:'townsfolk', roleId:'washerwoman',
-      detail: 'Señalá 2 jugadores a la Lavandera y mostrale una carta de Aldeano. UNO de los dos jugadores señalados DEBE ser ese Aldeano. El otro jugador puede tener cualquier rol. Duerme.' },
-    { text: 'Bibliotecario {player}: recibe 2 jugadores + ficha del Forastero → duerme', type:'townsfolk', roleId:'librarian',
-      detail: 'Igual que la Lavandera pero con un Forastero. Si no hay Forasteros, señalás 2 jugadores y hacés un gesto de "ninguno" (cabeza negando o manos cruzadas). Duerme.' },
-    { text: 'Investigador {player}: recibe 2 jugadores + ficha del Esbirro → duerme', type:'townsfolk', roleId:'investigator',
-      detail: 'Señalá 2 jugadores al Investigador y mostrale una carta de Esbirro. UNO de los dos jugadores señalados DEBE ser ese Esbirro. El otro jugador puede tener cualquier rol. Duerme.' },
-    { text: 'Cocinero {player}: recibe número de pares Malvados → duerme', type:'townsfolk', roleId:'chef',
-      detail: 'Mostrás con los dedos el número de pares de Malvados que calculaste. El número puede ser 0. Duerme.' },
+    { text: 'Lavandera {player}: señalale 2 jugadores y un símbolo de Aldeano en la hoja de ayuda → duerme', type:'townsfolk', roleId:'washerwoman',
+      detail: 'Señalá 2 jugadores a la Lavandera y señalale un símbolo de Aldeano en la hoja de ayuda. UNO de los dos jugadores señalados DEBE ser ese Aldeano. El otro jugador puede tener cualquier rol. Duerme.' },
+    { text: 'Bibliotecario {player}: señalale 2 jugadores y un símbolo de Forastero en la hoja de ayuda → duerme', type:'townsfolk', roleId:'librarian',
+      detail: 'Señalá 2 jugadores al Bibliotecario y señalale un símbolo de Forastero en la hoja de ayuda. UNO de los dos jugadores señalados DEBE ser ese Forastero. El otro jugador puede tener cualquier rol. Si no hay Forasteros, indicale que no hay Forasteros. Duerme.' },
+    { text: 'Investigador {player}: señalale 2 jugadores y un símbolo de Esbirro en la hoja de ayuda → duerme', type:'townsfolk', roleId:'investigator',
+      detail: 'Señalá 2 jugadores al Investigador y señalale un símbolo de Esbirro en la hoja de ayuda. UNO de los dos jugadores señalados DEBE ser ese Esbirro. El otro jugador puede tener cualquier rol. Duerme.' },
+    { text: 'Cocinero {player}: recibe número de pares de malvados sentados juntos → duerme', type:'townsfolk', roleId:'chef',
+      detail: 'Mostrás con los dedos el número de pares de jugadores Malos sentados juntos que calculaste. El número puede ser 0. Duerme.' },
     { text: 'Empático {player}: recibe número de vecinos Malvados → duerme', type:'townsfolk', roleId:'empath',
       detail: 'Mostrás con los dedos 0, 1 o 2: la cantidad de vecinos inmediatos del Empático que son Malvados. Duerme.' },
     { text: 'Adivina {player}: señala 2 jugadores → recibe Sí/No → duerme', type:'townsfolk', roleId:'fortune-teller',
-      detail: 'La Adivina señala 2 jugadores. Si alguno es el Diablillo, o alguno es la Cortina de Humo, respondés con pulgar arriba (Sí). De lo contrario, pulgar abajo (No). Duerme.' },
+      detail: 'Cada noche, la Adivina elige a dos jugadores y averigua si al menos uno de ellos es un demonio. No descubre cuál de ellos es un demonio, solo que uno lo es. Si ninguno lo es, descubre esto en su lugar. La Adivina puede elegir a dos jugadores cualesquiera, vivos o muertos, o incluso a sí misma. Si elige a un demonio muerto, la Adivina recibe igualmente un asentimiento. Duerme.' },
     { text: 'Mayordomo {player}: señala a su Amo → duerme', type:'outsider', roleId:'butler',
       detail: 'El Mayordomo señala a un jugador que será su Amo esta ronda. Solo podrá votar si su Amo vota primero. Duerme.' },
     { text: 'Espía {player}: ve el Grimorio completo → duerme', type:'minion', roleId:'spy',
@@ -1732,7 +1791,7 @@ const CHECKLIST_STEPS = {
     { text: 'Empático {player}: recibe número de vecinos Malvados actualizado → duerme', type:'townsfolk', roleId:'empath',
       detail: 'Contás nuevamente los vecinos vivos inmediatos del Empático y cuántos son Malvados. El conteo puede cambiar si algún vecino murió. Mostrás el número con los dedos.' },
     { text: 'Adivina {player}: señala 2 jugadores → recibe Sí/No → duerme', type:'townsfolk', roleId:'fortune-teller',
-      detail: 'La Adivina señala 2 jugadores. Si alguno es el Diablillo o la Cortina de Humo → pulgar arriba. Si ninguno → pulgar abajo. Funciona igual aunque alguno de los dos esté muerto.' },
+      detail: 'Cada noche, la Adivina elige a dos jugadores y averigua si al menos uno de ellos es un demonio. No descubre cuál de ellos es un demonio, solo que uno lo es. Si ninguno lo es, descubre esto en su lugar. La Adivina puede elegir a dos jugadores cualesquiera, vivos o muertos, o incluso a sí misma. Si elige a un demonio muerto, la Adivina recibe igualmente un asentimiento. Duerme.' },
     { text: 'Mayordomo {player}: señala a su nuevo Amo → duerme', type:'outsider', roleId:'butler',
       detail: 'El Mayordomo elige un nuevo Amo para el día siguiente. Puede repetir el mismo o cambiarlo.' },
     { text: 'Espía {player}: ve el Grimorio completo → duerme', type:'minion', roleId:'spy',
@@ -1767,6 +1826,7 @@ const CHECKLIST_STEPS = {
 };
 
 const checklistDone = { 'prep': [], 'first-night': [], 'night': [], 'day': [] };
+const checklistExpanded = { 'prep': [], 'first-night': [], 'night': [], 'day': [] };
 const nightDeceased = []; // índices de pasos de noche marcados como muertos
 
 function isRoleInGame(roleId) {
@@ -1782,29 +1842,28 @@ function isRoleInGame(roleId) {
 
 function renderChecklist(key) {
   const steps = CHECKLIST_STEPS[key];
-  const done = checklistDone[key];
   const colorMap = { townsfolk:'#27ae60', outsider:'#2980b9', minion:'#e74c3c', demon:'#ff6b6b' };
   const el = document.getElementById('checklist-' + key);
   if (!el) return;
 
   el.innerHTML = steps.map((step, i) => {
-    const isDone = done.includes(i);
+    const isExpanded = (checklistExpanded[key] || []).includes(i);
     const inGame = isRoleInGame(step.roleId);
     const isDeceased = (key === 'night' || key === 'day') && nightDeceased.includes(i);
-    // Grisar si el rol no está en juego (aplica a todas las secciones)
     const grayed = !inGame || isDeceased;
 
     let rowClass = 'night-step';
-    if (isDone) rowClass += ' done';
 
-    let nameStyle = `color:${colorMap[step.type]||'inherit'};font-family:'Lato',sans-serif;font-weight:${isDone?'300':'400'}`;
+    let nameStyle = `color:${colorMap[step.type]||'inherit'};font-family:'Lato',sans-serif;font-weight:400`;
     if (grayed) nameStyle += ';opacity:0.35';
 
-    const checkIcon = isDone
-      ? `<span style="color:#27ae60;font-size:13px;width:20px;text-align:center;flex-shrink:0">✓</span>`
-      : `<span style="color:var(--gold-dim);font-family:'Cinzel',serif;font-size:11px;width:20px;text-align:center;flex-shrink:0">${i+1}</span>`;
+    const stepNum = `<span style="color:var(--gold-dim);font-family:'Cinzel',serif;font-size:11px;width:20px;text-align:center;flex-shrink:0">${i+1}</span>`;
 
-    // 💀 botón: en noche normal Y en día, para pasos con roleId (salvo imp/scarlet-woman en noche)
+    const arrowIcon = step.detail
+      ? `<span style="color:var(--gold-dim);font-size:10px;flex-shrink:0;transition:transform 0.2s;transform:${isExpanded?'rotate(90deg)':'rotate(0deg)'};display:inline-block">▶</span>`
+      : `<span style="width:14px;flex-shrink:0"></span>`;
+
+    // 💀 botón
     const showDead = (key === 'night' && step.roleId && !['imp','scarlet-woman'].includes(step.roleId))
                   || (key === 'day' && step.roleId);
     const deadCheckbox = showDead
@@ -1813,13 +1872,6 @@ function renderChecklist(key) {
            onmouseenter="this.style.opacity='1'" onmouseleave="this.style.opacity='${isDeceased?'1':'0.3'}'">💀</span>`
       : `<span style="width:18px;flex-shrink:0"></span>`;
 
-    const detailBtn = step.detail
-      ? `<span onclick="event.stopPropagation();showStepDetail('${key}',${i})"
-           title="Ver detalle"
-           style="font-size:11px;cursor:pointer;color:var(--gold-dim);flex-shrink:0;padding:0 2px;transition:color 0.2s"
-           onmouseenter="this.style.color='var(--gold)'" onmouseleave="this.style.color='var(--gold-dim)'">＋</span>`
-      : '';
-
     const bluffInline = step.bluffStep
       ? (() => {
           if (!state.demonBluffs || state.demonBluffs.length === 0)
@@ -1827,7 +1879,11 @@ function renderChecklist(key) {
           return `<div style="margin-top:6px;display:flex;gap:5px;flex-wrap:wrap">` +
             state.demonBluffs.map(id => {
               const r = TB_ROLES.find(r => r.id === id);
-              return r ? `<span style="background:rgba(255,107,107,0.12);border:1px solid rgba(255,107,107,0.35);border-radius:4px;padding:3px 8px;font-size:11px;color:#ff6b6b">${r.name}</span>` : '';
+              if (!r) return '';
+              const color      = r.type === 'townsfolk' ? '#27ae60' : '#2980b9';
+              const bgColor    = r.type === 'townsfolk' ? 'rgba(39,174,96,0.12)'  : 'rgba(41,128,185,0.12)';
+              const borderColor= r.type === 'townsfolk' ? 'rgba(39,174,96,0.35)'  : 'rgba(41,128,185,0.35)';
+              return `<span style="background:${bgColor};border:1px solid ${borderColor};border-radius:4px;padding:3px 8px;font-size:11px;color:${color}">${r.name}</span>`;
             }).join('') + `</div>`;
         })()
       : '';
@@ -1836,7 +1892,6 @@ function renderChecklist(key) {
     let stepText = step.text;
     if (step.roleId && step.text.includes('{player}')) {
       const match = state.players.find(p => p.role === step.roleId);
-      // Check if a drunk player believes they are this role
       const drunkMatch = state.players.find(p => p.role === 'drunk' && p.drunkBelief === step.roleId);
       if (match) {
         const isPoisoned = match.tokens && match.tokens.includes('poisoned');
@@ -1851,23 +1906,29 @@ function renderChecklist(key) {
       }
     }
 
-    return `<div class="${rowClass}" onclick="toggleChecklistStep('${key}',${i})" style="gap:8px;align-items:flex-start;flex-wrap:wrap">
+    const detailPanel = (step.detail && isExpanded)
+      ? `<div style="margin-top:6px;padding:8px 10px;background:rgba(201,168,76,0.05);border-left:2px solid var(--gold-dim);border-radius:0 4px 4px 0;font-size:11px;color:var(--text-dim);line-height:1.6">${step.detail}</div>`
+      : '';
+
+    return `<div class="${rowClass}" onclick="toggleChecklistStep('${key}',${i})" style="gap:8px;align-items:flex-start;flex-wrap:wrap;cursor:${step.detail?'pointer':'default'}">
       <div style="display:flex;align-items:center;gap:8px;width:100%">
-        ${checkIcon}
+        ${stepNum}
         <span style="${nameStyle};flex:1;line-height:1.4">${stepText}</span>
-        ${detailBtn}
+        ${arrowIcon}
         ${deadCheckbox}
       </div>
       ${bluffInline}
+      ${detailPanel}
     </div>`;
   }).join('');
 }
 
 function toggleChecklistStep(key, i) {
-  const done = checklistDone[key];
-  const idx = done.indexOf(i);
-  if (idx === -1) done.push(i);
-  else done.splice(idx, 1);
+  if (!checklistExpanded[key]) checklistExpanded[key] = [];
+  const arr = checklistExpanded[key];
+  const idx = arr.indexOf(i);
+  if (idx === -1) arr.push(i);
+  else arr.splice(idx, 1);
   renderChecklist(key);
 }
 
@@ -1882,6 +1943,7 @@ function toggleNightDeceased(i) {
 
 function resetChecklist(key) {
   checklistDone[key] = [];
+  checklistExpanded[key] = [];
   if (key === 'night' || key === 'day') nightDeceased.length = 0;
   if (sectionOpen[key]) renderChecklist(key);
 }
